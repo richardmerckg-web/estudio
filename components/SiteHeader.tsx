@@ -184,8 +184,9 @@ export default function SiteHeader() {
 
             <div className="mobile-menu-footer">
               <p>Wind Residences / Tagaytay</p>
-              <a href="#book" onClick={closeMobileMenu}>
-                Send an inquiry <span aria-hidden="true">-&gt;</span>
+              <a className="mobile-menu-cta" href="#book" onClick={closeMobileMenu}>
+                <span>Book Now</span>
+                <span aria-hidden="true">-&gt;</span>
               </a>
             </div>
           </aside>

@@ -136,8 +136,8 @@ export default function Home() {
             <span>Check-out / 12:00 NN Philippine time</span>
           </div>
           <div className="hero-actions">
-            <a className="button button--dark" href="#stay">
-              See the stay
+            <a className="button button--dark" href="#book">
+              Book Now
             </a>
             <a className="text-link" href="#rates">
               View rates
