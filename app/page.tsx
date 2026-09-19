@@ -21,7 +21,7 @@ const inclusions = [
   },
   {
     number: "04",
-    title: "Wi-Fi, Netflix and Xbox",
+    title: "Wi-Fi, Netflix and PS4",
     description: "Stay connected, switch off, or make the evening your own.",
   },
 ];
@@ -47,7 +47,7 @@ const amenityGroups = [
     items: [
       "Wi-Fi",
       "Smart TV with Netflix",
-      "Xbox",
+      "PS4",
       "Game console",
       "Sofa bed",
       "Karaoke",

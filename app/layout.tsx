@@ -19,7 +19,7 @@ const sansFont = DM_Sans({
 export const metadata: Metadata = {
   title: "Estudio Fresco at Wind Residences Tagaytay",
   description:
-    "A fresh Airbnb stay at Wind Residences Tagaytay with a bedroom, balcony, kitchen, Wi-Fi, Netflix, and Xbox.",
+    "A fresh Airbnb stay at Wind Residences Tagaytay with a bedroom, balcony, kitchen, Wi-Fi, Netflix, and PS4.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
