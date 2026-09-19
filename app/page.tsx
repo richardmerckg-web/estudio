@@ -414,7 +414,12 @@ export default function Home() {
             </div>
           </div>
 
-          <form className="booking-form" id="booking-form" action="#book" method="get">
+          <form
+            className="booking-form"
+            id="booking-form"
+            action="https://formspree.io/f/mnpnnkbd"
+            method="POST"
+          >
             <div className="booking-form-grid">
               <div className="form-field">
                 <label htmlFor="guest-name">Full name</label>
