@@ -1,5 +1,6 @@
 import Image from "next/image";
 import SiteHeader from "@/components/SiteHeader";
+import ImageGallery from "@/components/ImageGallery";
 
 const inclusions = [
   {
@@ -370,14 +371,7 @@ export default function Home() {
           </p>
         </div>
 
-        <div className="photo-grid">
-          {galleryImages.map((item) => (
-            <div className={`photo-tile image-frame ${item.className ?? ""}`} key={item.image}>
-              <Image src={item.image} alt={item.alt} fill sizes="(max-width: 700px) 100vw, 50vw" />
-              <p className="image-credit">Estudio Fresco / Wind Residences</p>
-            </div>
-          ))}
-        </div>
+        <ImageGallery images={galleryImages} />
       </section>
 
       <section className="property-note-section" aria-labelledby="property-note-heading">
