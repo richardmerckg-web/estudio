@@ -80,45 +80,45 @@ const amenityGroups = [
 
 const galleryImages = [
   {
-    image: "/images/4.jpg",
+    image: "/images/4.webp",
     alt: "Living area and kitchen at Estudio Fresco",
     className: "photo-tile--large",
   },
   {
-    image: "/images/6.jpg",
+    image: "/images/6.webp",
     alt: "Bedroom with desk and wardrobe at Estudio Fresco",
     className: "photo-tile--small",
   },
   {
-    image: "/images/13.jpg",
+    image: "/images/13.webp",
     alt: "Bedroom with decorative wall art at Estudio Fresco",
     className: "photo-tile--small",
   },
-  { image: "/images/1.jpg", alt: "Bedroom workspace and television at Estudio Fresco" },
-  { image: "/images/2.jpg", alt: "Sofa bed and seating area at Estudio Fresco" },
-  { image: "/images/5.jpg", alt: "Kitchen at Estudio Fresco" },
-  { image: "/images/7.jpg", alt: "Coffee and cooking area at Estudio Fresco" },
-  { image: "/images/9.jpg", alt: "Coffee maker and rice cooker at Estudio Fresco" },
-  { image: "/images/8.jpg", alt: "Toilet and bath at Estudio Fresco" },
-  { image: "/images/3.jpg", alt: "Night view from the residence balcony" },
-  { image: "/images/10.jpg", alt: "Shared Wind Residences lounge" },
-  { image: "/images/11.jpg", alt: "Shared lounge with fireplace at Wind Residences" },
-  { image: "/images/12.jpg", alt: "Stone fireplace and seating area at Wind Residences" },
-  { image: "/images/14.jpg", alt: "Shared lounge seating at Wind Residences" },
-  { image: "/images/15.jpg", alt: "Outdoor tennis court at Wind Residences" },
-  { image: "/images/16.jpg", alt: "Outdoor basketball court at Wind Residences" },
-  { image: "/images/17.jpg", alt: "Indoor badminton courts at Wind Residences" },
+  { image: "/images/1.webp", alt: "Bedroom workspace and television at Estudio Fresco" },
+  { image: "/images/2.webp", alt: "Sofa bed and seating area at Estudio Fresco" },
+  { image: "/images/5.webp", alt: "Kitchen at Estudio Fresco" },
+  { image: "/images/7.webp", alt: "Coffee and cooking area at Estudio Fresco" },
+  { image: "/images/9.webp", alt: "Coffee maker and rice cooker at Estudio Fresco" },
+  { image: "/images/8.webp", alt: "Toilet and bath at Estudio Fresco" },
+  { image: "/images/3.webp", alt: "Night view from the residence balcony" },
+  { image: "/images/10.webp", alt: "Shared Wind Residences lounge" },
+  { image: "/images/11.webp", alt: "Shared lounge with fireplace at Wind Residences" },
+  { image: "/images/12.webp", alt: "Stone fireplace and seating area at Wind Residences" },
+  { image: "/images/14.webp", alt: "Shared lounge seating at Wind Residences" },
+  { image: "/images/15.webp", alt: "Outdoor tennis court at Wind Residences" },
+  { image: "/images/16.webp", alt: "Outdoor basketball court at Wind Residences" },
+  { image: "/images/17.webp", alt: "Indoor badminton courts at Wind Residences" },
   {
-    image: "/images/18.jpg",
+    image: "/images/18.webp",
     alt: "Table tennis table inside the recreation hall at Wind Residences",
   },
-  { image: "/images/19.jpg", alt: "Billiards table inside the recreation hall at Wind Residences" },
-  { image: "/images/20.jpg", alt: "Dartboards and billiards area at Wind Residences" },
-  { image: "/images/21.jpg", alt: "Dartboards inside the recreation hall at Wind Residences" },
-  { image: "/images/22.jpg", alt: "View of Taal Volcano and Taal Lake from Tagaytay" },
-  { image: "/images/23.jpg", alt: "Wind Residences swimming pools and towers at night" },
-  { image: "/images/24.jpg", alt: "Night view of the swimming pools and Wind Residences buildings" },
-  { image: "/images/25.jpg", alt: "Lit swimming pool with Wind Residences towers at night" },
+  { image: "/images/19.webp", alt: "Billiards table inside the recreation hall at Wind Residences" },
+  { image: "/images/20.webp", alt: "Dartboards and billiards area at Wind Residences" },
+  { image: "/images/21.webp", alt: "Dartboards inside the recreation hall at Wind Residences" },
+  { image: "/images/22.webp", alt: "View of Taal Volcano and Taal Lake from Tagaytay" },
+  { image: "/images/23.webp", alt: "Wind Residences swimming pools and towers at night" },
+  { image: "/images/24.webp", alt: "Night view of the swimming pools and Wind Residences buildings" },
+  { image: "/images/25.webp", alt: "Lit swimming pool with Wind Residences towers at night" },
 ];
 
 export default function Home() {
@@ -129,7 +129,7 @@ export default function Home() {
       <section className="hero" id="top" aria-labelledby="hero-heading">
         <div className="hero-background" aria-hidden="true">
           <Image
-            src="/images/4.jpg"
+            src="/images/4.webp"
             alt=""
             fill
             priority
@@ -255,7 +255,7 @@ export default function Home() {
       <section className="split-section" id="included" aria-labelledby="included-heading">
         <div className="image-frame split-media">
           <Image
-            src="/images/5.jpg"
+            src="/images/5.webp"
             alt="Kitchen at Estudio Fresco with cooking equipment and counter space"
             fill
             sizes="(max-width: 820px) 100vw, 50vw"
