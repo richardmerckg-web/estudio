@@ -128,7 +128,7 @@ export default function ImageGallery({ images }: { images: GalleryImage[] }) {
                 aria-label="Close image viewer"
                 onClick={closeViewer}
               >
-                Close <span aria-hidden="true">X</span>
+                <span aria-hidden="true">X</span>
               </button>
             </div>
 

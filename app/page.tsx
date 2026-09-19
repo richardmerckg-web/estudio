@@ -66,12 +66,14 @@ const amenityGroups = [
     ],
   },
   {
-    title: "House notes",
+    title: "House rules",
     note: "Please keep in mind",
     items: [
-      "Light cooking only",
-      "No smoking policy inside",
-      "Condo amenities may have additional fees",
+      "Maximum of 4 guests",
+      "No smoking inside the unit",
+      "No pets unless agreed in writing",
+      "No parties or loud noise",
+      "Follow all building and condo association rules",
     ],
   },
 ];
@@ -183,14 +185,13 @@ export default function Home() {
           <div className="statement-copy">
             <p>
               Estudio Fresco at Wind Residences Tagaytay is a one-bedroom stay for
-              up to four guests, with space for up to six guests in total. Come
-              for a change of air, a slower morning, and an easy place to settle
-              in.
+              up to four guests in total. Come for a change of air, a slower
+              morning, and an easy place to settle in.
             </p>
             <div className="statement-facts">
               <span>Weekdays ₱1,800</span>
               <span>Weekends ₱2,300</span>
-              <span>Up to 6 guests</span>
+              <span>Up to 4 guests</span>
             </div>
           </div>
         </div>
@@ -205,8 +206,7 @@ export default function Home() {
             </h2>
           </div>
           <p className="section-note">
-            Weekday and weekend rates are good for up to four guests. Additional
-            guests can be added up to the maximum capacity.
+            Weekday and weekend rates are good for up to four guests.
           </p>
         </div>
 
@@ -231,14 +231,7 @@ export default function Home() {
                 <span className="rate-label">Maximum capacity</span>
                 <span className="rate-description">For the whole residence</span>
               </div>
-              <strong>6 guests</strong>
-            </div>
-            <div className="rate-row">
-              <div className="rate-copy">
-                <span className="rate-label">Additional guest</span>
-                <span className="rate-description">Added per person</span>
-              </div>
-              <strong>₱500</strong>
+              <strong>4 guests</strong>
             </div>
           </div>
 
@@ -417,7 +410,7 @@ export default function Home() {
             <div className="booking-summary">
               <span>Weekdays / ₱1,800</span>
               <span>Weekends / ₱2,300</span>
-              <span>Up to 6 guests</span>
+              <span>Up to 4 guests</span>
             </div>
           </div>
 
@@ -448,8 +441,6 @@ export default function Home() {
                   <option value="2">2 guests</option>
                   <option value="3">3 guests</option>
                   <option value="4">4 guests</option>
-                  <option value="5">5 guests</option>
-                  <option value="6">6 guests</option>
                 </select>
               </div>
               <div className="form-field form-field--full">
@@ -507,7 +498,6 @@ export default function Home() {
           />
           <circle cx="16" cy="14.7" r="1.7" fill="currentColor" />
         </svg>
-        <span>Book on Airbnb</span>
       </a>
 
       <a
@@ -527,7 +517,6 @@ export default function Home() {
             d="m7.6 19.05 6.15-6.55 3.02 2.72 5.98-3.25-6.2 6.6-2.98-2.67-5.97 3.15Z"
           />
         </svg>
-        <span>Message us</span>
       </a>
     </main>
   );

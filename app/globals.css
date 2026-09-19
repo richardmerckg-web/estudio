@@ -89,9 +89,11 @@ em {
   right: max(1.1rem, env(safe-area-inset-right));
   display: inline-flex;
   align-items: center;
-  gap: 0.65rem;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
   min-height: 52px;
-  padding: 0.75rem 1rem;
+  padding: 0;
   border: 1px solid rgba(255, 255, 255, 0.34);
   border-radius: 999px;
   color: #fff;
@@ -1946,12 +1948,6 @@ em {
   .floating-action {
     width: 52px;
     height: 52px;
-    padding: 0;
-    justify-content: center;
-  }
-
-  .floating-action span {
-    display: none;
   }
 
   .site-header--hero {
