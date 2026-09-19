@@ -367,7 +367,8 @@ export default function Home() {
           </div>
           <p className="section-note">
             A visual tour of the residence, including the bedroom, kitchen, bath,
-            balcony view, and shared Wind Residences spaces.
+            balcony view, and shared Wind Residences spaces. Tap any image to view
+            it full size.
           </p>
         </div>
 
@@ -473,6 +474,20 @@ export default function Home() {
           </div>
         </div>
       </footer>
+
+      <a className="messenger-button" href="#book" aria-label="Message us about your stay">
+        <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+          <path
+            fill="currentColor"
+            d="M16 3C8.27 3 2 8.53 2 15.35c0 3.88 1.97 7.38 5.06 9.7v4.04l4.64-2.55c1.37.38 2.81.58 4.3.58 7.73 0 14-5.53 14-12.35S23.73 3 16 3Z"
+          />
+          <path
+            fill="#0084ff"
+            d="m7.6 19.05 6.15-6.55 3.02 2.72 5.98-3.25-6.2 6.6-2.98-2.67-5.97 3.15Z"
+          />
+        </svg>
+        <span>Message us</span>
+      </a>
     </main>
   );
 }

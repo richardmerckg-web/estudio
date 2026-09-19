@@ -83,6 +83,47 @@ em {
   overflow: hidden;
 }
 
+.messenger-button {
+  position: fixed;
+  z-index: 20;
+  right: max(1.1rem, env(safe-area-inset-right));
+  bottom: max(1.1rem, env(safe-area-inset-bottom));
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-height: 52px;
+  padding: 0.75rem 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  border-radius: 999px;
+  background: #0084ff;
+  box-shadow: 0 12px 28px rgba(0, 73, 145, 0.28);
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  text-transform: uppercase;
+  transition: background-color 220ms ease, box-shadow 300ms var(--ease-smooth),
+    transform 300ms var(--ease-smooth);
+}
+
+.messenger-button svg {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+}
+
+.messenger-button:hover {
+  background: #0078e8;
+  box-shadow: 0 16px 32px rgba(0, 73, 145, 0.34);
+  transform: translateY(-4px);
+}
+
+.messenger-button:active {
+  box-shadow: 0 8px 18px rgba(0, 73, 145, 0.24);
+  transform: translateY(-1px);
+}
+
 .site-header {
   position: fixed;
   z-index: 10;
@@ -1666,7 +1707,23 @@ em {
 
 @media (max-width: 700px) {
   body {
-    font-size: 0.88rem;
+    font-size: 0.9rem;
+  }
+
+  .messenger-button {
+    width: 52px;
+    height: 52px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .messenger-button span {
+    display: none;
+  }
+
+  .site-header--hero {
+    background: rgba(22, 26, 25, 0.22);
+    backdrop-filter: blur(10px);
   }
 
   .header-inner,
@@ -1682,14 +1739,16 @@ em {
 
   .header-inner {
     align-items: flex-start;
-    column-gap: 1rem;
+    column-gap: 0.85rem;
   }
 
   .brand {
+    flex: 1;
     min-width: 0;
   }
 
   .header-cta {
+    flex-shrink: 0;
     min-height: 38px;
     padding-right: 0.8rem;
     padding-left: 0.8rem;
@@ -1701,7 +1760,16 @@ em {
     overflow-x: auto;
     justify-content: flex-start;
     font-size: 0.58rem;
+    scrollbar-width: none;
     white-space: nowrap;
+  }
+
+  .main-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .main-nav a {
+    padding: 0.35rem 0;
   }
 
   .hero-copy {
@@ -1710,8 +1778,8 @@ em {
     min-height: 100vh;
     min-height: 100svh;
     min-height: 100dvh;
-    padding-top: clamp(4rem, 11vh, 5.5rem);
-    padding-bottom: clamp(2.5rem, 6vh, 3.5rem);
+    padding-top: clamp(8rem, 18vh, 10rem);
+    padding-bottom: clamp(3rem, 7vh, 4.5rem);
   }
 
   .hero h1 {
@@ -1811,7 +1879,7 @@ em {
   }
 
   .split-media {
-    min-height: 530px;
+    min-height: min(72svh, 480px);
   }
 
   .split-copy {
@@ -1848,6 +1916,15 @@ em {
 
   .booking-form-grid {
     display: block;
+  }
+
+  .form-field input,
+  .form-field select {
+    min-height: 44px;
+  }
+
+  .form-field textarea {
+    min-height: 120px;
   }
 
   .form-field + .form-field {
@@ -1908,6 +1985,7 @@ em {
   .photo-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     grid-auto-rows: 220px;
+    gap: 0.75rem;
   }
 
   .photo-tile,
@@ -1915,6 +1993,10 @@ em {
   .photo-tile--small {
     min-height: 0;
     margin-top: 0;
+  }
+
+  .photo-tile .image-credit {
+    display: none;
   }
 
   .photo-tile--large {
@@ -1934,6 +2016,33 @@ em {
   .lightbox-navigation {
     width: 100%;
     justify-content: space-between;
+  }
+
+  .lightbox-backdrop {
+    padding: 0.5rem;
+  }
+
+  .lightbox-panel {
+    max-height: calc(100dvh - 1rem);
+    padding: 0.75rem;
+  }
+
+  .lightbox-toolbar {
+    align-items: flex-start;
+  }
+
+  .lightbox-toolbar > p {
+    max-width: 65%;
+    line-height: 1.4;
+  }
+
+  .lightbox-image-frame {
+    height: min(58svh, 420px);
+    min-height: 200px;
+  }
+
+  .lightbox-control {
+    min-height: 44px;
   }
 
   .testimonial-section blockquote {
@@ -1996,13 +2105,13 @@ em {
   }
 
   .main-nav {
-    gap: 0.55rem;
-    font-size: 0.52rem;
+    gap: 0.75rem;
+    font-size: 0.56rem;
   }
 
   .hero-copy {
-    padding-top: clamp(3.5rem, 10vh, 5rem);
-    padding-bottom: clamp(2rem, 5vh, 3rem);
+    padding-top: clamp(7rem, 17vh, 9rem);
+    padding-bottom: clamp(2.5rem, 6vh, 4rem);
   }
 
   .hero h1 {
@@ -2017,7 +2126,7 @@ em {
 
   .hero-meta {
     width: 100%;
-    font-size: 0.55rem;
+    font-size: 0.58rem;
     letter-spacing: 0.1em;
   }
 
@@ -2061,6 +2170,17 @@ em {
 
   .photo-grid {
     grid-auto-rows: 170px;
+  }
+
+  .split-media {
+    min-height: min(68svh, 400px);
+  }
+}
+
+@media (hover: none) and (max-width: 700px) {
+  .photo-tile-action {
+    opacity: 0.94;
+    transform: translateY(0);
   }
 }
 
