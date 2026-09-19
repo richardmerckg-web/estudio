@@ -83,11 +83,10 @@ em {
   overflow: hidden;
 }
 
-.messenger-button {
+.floating-action {
   position: fixed;
   z-index: 20;
   right: max(1.1rem, env(safe-area-inset-right));
-  bottom: max(1.1rem, env(safe-area-inset-bottom));
   display: inline-flex;
   align-items: center;
   gap: 0.65rem;
@@ -95,8 +94,6 @@ em {
   padding: 0.75rem 1rem;
   border: 1px solid rgba(255, 255, 255, 0.34);
   border-radius: 999px;
-  background: #0084ff;
-  box-shadow: 0 12px 28px rgba(0, 73, 145, 0.28);
   color: #fff;
   font-size: 0.62rem;
   font-weight: 600;
@@ -107,7 +104,19 @@ em {
     transform 300ms var(--ease-smooth);
 }
 
-.messenger-button svg {
+.messenger-button {
+  bottom: max(1.1rem, env(safe-area-inset-bottom));
+  background: #0084ff;
+  box-shadow: 0 12px 28px rgba(0, 73, 145, 0.28);
+}
+
+.airbnb-button {
+  bottom: calc(max(1.1rem, env(safe-area-inset-bottom)) + 4.25rem);
+  background: #ff385c;
+  box-shadow: 0 12px 28px rgba(173, 24, 55, 0.26);
+}
+
+.floating-action svg {
   width: 24px;
   height: 24px;
   flex: 0 0 auto;
@@ -119,8 +128,19 @@ em {
   transform: translateY(-4px);
 }
 
+.airbnb-button:hover {
+  background: #e31c5f;
+  box-shadow: 0 16px 32px rgba(173, 24, 55, 0.34);
+  transform: translateY(-4px);
+}
+
 .messenger-button:active {
   box-shadow: 0 8px 18px rgba(0, 73, 145, 0.24);
+  transform: translateY(-1px);
+}
+
+.airbnb-button:active {
+  box-shadow: 0 8px 18px rgba(173, 24, 55, 0.24);
   transform: translateY(-1px);
 }
 
@@ -1923,14 +1943,14 @@ em {
     font-size: 0.9rem;
   }
 
-  .messenger-button {
+  .floating-action {
     width: 52px;
     height: 52px;
     padding: 0;
     justify-content: center;
   }
 
-  .messenger-button span {
+  .floating-action span {
     display: none;
   }
 

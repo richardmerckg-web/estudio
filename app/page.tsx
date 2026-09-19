@@ -103,6 +103,20 @@ const galleryImages = [
   { image: "/images/11.jpg", alt: "Shared lounge with fireplace at Wind Residences" },
   { image: "/images/12.jpg", alt: "Stone fireplace and seating area at Wind Residences" },
   { image: "/images/14.jpg", alt: "Shared lounge seating at Wind Residences" },
+  { image: "/images/15.jpg", alt: "Outdoor tennis court at Wind Residences" },
+  { image: "/images/16.jpg", alt: "Outdoor basketball court at Wind Residences" },
+  { image: "/images/17.jpg", alt: "Indoor badminton courts at Wind Residences" },
+  {
+    image: "/images/18.jpg",
+    alt: "Table tennis table inside the recreation hall at Wind Residences",
+  },
+  { image: "/images/19.jpg", alt: "Billiards table inside the recreation hall at Wind Residences" },
+  { image: "/images/20.jpg", alt: "Dartboards and billiards area at Wind Residences" },
+  { image: "/images/21.jpg", alt: "Dartboards inside the recreation hall at Wind Residences" },
+  { image: "/images/22.jpg", alt: "View of Taal Volcano and Taal Lake from Tagaytay" },
+  { image: "/images/23.jpg", alt: "Wind Residences swimming pools and towers at night" },
+  { image: "/images/24.jpg", alt: "Night view of the swimming pools and Wind Residences buildings" },
+  { image: "/images/25.jpg", alt: "Lit swimming pool with Wind Residences towers at night" },
 ];
 
 export default function Home() {
@@ -475,7 +489,34 @@ export default function Home() {
         </div>
       </footer>
 
-      <a className="messenger-button" href="#book" aria-label="Message us about your stay">
+      <a
+        className="floating-action airbnb-button"
+        href="https://www.airbnb.com/h/merckgildo"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Book Estudio Fresco on Airbnb"
+      >
+        <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+          <path
+            fill="none"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2.4"
+            d="M16 4.25c-2.07 0-3.38 1.89-4.52 4.03L5.62 20c-.85 1.58-.46 3.54.94 4.67 1.77 1.44 4.43.95 5.57-1.05L16 17.1l3.87 6.52c1.14 2 3.8 2.49 5.57 1.05 1.4-1.13 1.79-3.09.94-4.67L20.52 8.28C19.38 6.14 18.07 4.25 16 4.25Z"
+          />
+          <circle cx="16" cy="14.7" r="1.7" fill="currentColor" />
+        </svg>
+        <span>Book on Airbnb</span>
+      </a>
+
+      <a
+        className="floating-action messenger-button"
+        href="https://www.messenger.com/t/1038638419343903"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Message us about your stay"
+      >
         <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">
           <path
             fill="currentColor"
