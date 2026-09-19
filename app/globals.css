@@ -1934,10 +1934,13 @@ em {
     display: none;
   }
 
-  .site-header,
-  .site-header--hero,
-  .site-header--solid {
+  .site-header--hero {
     background: transparent;
+    backdrop-filter: none;
+  }
+
+  .site-header--solid {
+    background: rgba(251, 250, 247, 0.97);
     backdrop-filter: none;
   }
 
