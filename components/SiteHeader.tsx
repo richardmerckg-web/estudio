@@ -153,8 +153,13 @@ export default function SiteHeader() {
                 <p className="mobile-menu-kicker">Estudio Fresco</p>
                 <h2 id="mobile-menu-title">Explore</h2>
               </div>
-              <button className="mobile-menu-close" type="button" onClick={closeMobileMenu}>
-                Close <span aria-hidden="true">X</span>
+              <button
+                className="mobile-menu-close"
+                type="button"
+                aria-label="Close menu"
+                onClick={closeMobileMenu}
+              >
+                <span aria-hidden="true">X</span>
               </button>
             </div>
 
