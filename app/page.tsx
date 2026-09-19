@@ -1,4 +1,5 @@
 import Image from "next/image";
+import BookingForm from "@/components/BookingForm";
 import SiteHeader from "@/components/SiteHeader";
 import ImageGallery from "@/components/ImageGallery";
 
@@ -414,55 +415,7 @@ export default function Home() {
             </div>
           </div>
 
-          <form
-            className="booking-form"
-            id="booking-form"
-            action="https://formspree.io/f/mnpnnkbd"
-            method="POST"
-          >
-            <div className="booking-form-grid">
-              <div className="form-field">
-                <label htmlFor="guest-name">Full name</label>
-                <input id="guest-name" name="name" type="text" autoComplete="name" required />
-              </div>
-              <div className="form-field">
-                <label htmlFor="guest-email">Email address</label>
-                <input id="guest-email" name="email" type="email" autoComplete="email" required />
-              </div>
-              <div className="form-field">
-                <label htmlFor="preferred-dates">Preferred dates</label>
-                <input
-                  id="preferred-dates"
-                  name="dates"
-                  type="text"
-                  placeholder="e.g. 12–14 July 2026"
-                  required
-                />
-              </div>
-              <div className="form-field">
-                <label htmlFor="guest-count">Number of guests</label>
-                <select id="guest-count" name="guests" defaultValue="4" required>
-                  <option value="1">1 guest</option>
-                  <option value="2">2 guests</option>
-                  <option value="3">3 guests</option>
-                  <option value="4">4 guests</option>
-                </select>
-              </div>
-              <div className="form-field form-field--full">
-                <label htmlFor="booking-message">Message</label>
-                <textarea
-                  id="booking-message"
-                  name="message"
-                  rows={4}
-                  placeholder="Tell us anything we should know about your stay."
-                />
-              </div>
-            </div>
-            <button className="button button--dark" type="submit">
-              Send booking request
-            </button>
-            <p className="form-note">We will reply with availability and next steps.</p>
-          </form>
+          <BookingForm />
         </div>
       </section>
 
