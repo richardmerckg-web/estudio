@@ -142,11 +142,11 @@ export default function Home() {
         <div className="hero-copy">
           <p className="eyebrow">Estudio Fresco / Wind Residences</p>
           <h1 id="hero-heading">
-            A fresh stay in <em>Tagaytay.</em>
+            One-bedroom stay in <em>Tagaytay.</em>
           </h1>
           <p className="hero-intro">
-            A comfortable one-bedroom stay with a balcony, kitchen, and the small
-            comforts that make a weekend away feel easy.
+            A comfortable one-bedroom stay at Wind Residences with a balcony,
+            kitchen, and the small comforts that make a weekend away feel easy.
           </p>
           <div className="hero-meta">
             <span>Check-in / 2:00 PM</span>
