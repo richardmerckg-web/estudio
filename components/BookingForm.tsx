@@ -75,6 +75,10 @@ export default function BookingForm() {
             <input id="guest-name" name="name" type="text" autoComplete="name" required />
           </div>
           <div className="form-field">
+            <label htmlFor="guest-email">Email address</label>
+            <input id="guest-email" name="email" type="email" autoComplete="email" required />
+          </div>
+          <div className="form-field">
             <label htmlFor="contact-number">Contact number</label>
             <input
               id="contact-number"
