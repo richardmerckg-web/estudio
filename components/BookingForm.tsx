@@ -242,7 +242,7 @@ export default function BookingForm() {
           {isSubmitting ? "Sending request…" : "Send booking request"}
         </button>
         <p className={`form-note${formError ? " form-note--error" : ""}`} role={formError ? "alert" : undefined}>
-          {formError || (availabilityState === "unavailable" ? "Live availability is unavailable; Formspree email fallback remains active." : "Dates are held for 24 hours while your request is pending.")}
+          {formError || (availabilityState === "unavailable" ? "Live availability is unavailable; Formspree email fallback remains active." : "Your request stays pending while we confirm availability. Pending requests do not reserve the date; only confirmed bookings do.")}
         </p>
       </form>
 
@@ -272,7 +272,7 @@ export default function BookingForm() {
             </button>
             <p className="eyebrow">Request received</p>
             <h2 id="booking-success-title">
-              Thank you. <em>Your dates are held.</em>
+              Thank you. <em>Your request was received.</em>
             </h2>
             <p id="booking-success-copy">
               {success.mode === "pending"
