@@ -8,6 +8,14 @@ function isMonth(value: string) {
   return /^\d{4}-(0[1-9]|1[0-2])$/.test(value);
 }
 
+function nightsBetween(checkIn: string, checkOut: string) {
+  const start = Date.parse(`${checkIn}T12:00:00Z`);
+  const end = Date.parse(`${checkOut}T12:00:00Z`);
+  return Number.isFinite(start) && Number.isFinite(end) && end > start
+    ? Math.round((end - start) / 86_400_000)
+    : 0;
+}
+
 function textValue(value: unknown, maxLength: number) {
   return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
 }
@@ -61,12 +69,6 @@ async function getDashboardData(request: Request, admin: ReturnType<typeof creat
     .limit(500);
   if (allError) throw allError;
 
-  const { data: nights, error: nightsError } = await admin
-    .from("booking_nights")
-    .select("night, booking_id")
-    .limit(10000);
-  if (nightsError) throw nightsError;
-
   const bookingIds = (allBookings || []).map((booking) => booking.id);
   const { data: auditEntries, error: auditError } = bookingIds.length
     ? await admin
@@ -93,20 +95,14 @@ async function getDashboardData(request: Request, admin: ReturnType<typeof creat
     .map((booking) => ({ ...booking, audit_log: auditByBooking.get(booking.id) || [] }));
   const totals = Object.fromEntries(statuses.map((value) => [value, 0])) as Record<(typeof statuses)[number], number>;
   for (const booking of allBookings || []) totals[booking.status as (typeof statuses)[number]] += 1;
-  const activeIds = new Set(
-    (allBookings || [])
-      .filter((booking) => ["confirmed", "checked_in", "checked_out"].includes(booking.status))
-      .map((booking) => booking.id),
-  );
+  const activeBookings = (allBookings || []).filter((booking) => ["confirmed", "checked_in", "checked_out"].includes(booking.status));
 
   return {
     bookings,
     summary: {
       totals,
-      confirmedNights: (nights || []).filter((night) => activeIds.has(night.booking_id)).length,
-      estimatedConfirmedRevenue: (allBookings || [])
-        .filter((booking) => ["confirmed", "checked_in", "checked_out"].includes(booking.status))
-        .reduce((total, booking) => total + Number(booking.total_amount), 0),
+      confirmedNights: activeBookings.reduce((total, booking) => total + nightsBetween(booking.check_in, booking.check_out), 0),
+      estimatedConfirmedRevenue: activeBookings.reduce((total, booking) => total + Number(booking.total_amount), 0),
     },
   };
 }

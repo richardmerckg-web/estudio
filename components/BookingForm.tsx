@@ -22,6 +22,7 @@ export default function BookingForm() {
   const [formError, setFormError] = useState("");
   const [availabilityState, setAvailabilityState] = useState<"loading" | "ready" | "unavailable">("loading");
   const [dateRange, setDateRange] = useState<DateRange>({ checkIn: "", checkOut: "" });
+  const [calendarRefreshKey, setCalendarRefreshKey] = useState(0);
   const [fallbackDates, setFallbackDates] = useState("");
   const [estimatedTotal, setEstimatedTotal] = useState(0);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -77,6 +78,7 @@ export default function BookingForm() {
     setFallbackDates("");
     setEstimatedTotal(0);
     setAvailabilityState("loading");
+    setCalendarRefreshKey((value) => value + 1);
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -196,6 +198,7 @@ export default function BookingForm() {
               checkOut={dateRange.checkOut}
               onRangeChange={handleRangeChange}
               onAvailabilityState={handleAvailabilityState}
+              refreshKey={calendarRefreshKey}
             />
             {availabilityState === "unavailable" ? (
               <div className="booking-fallback-dates">
@@ -245,6 +248,17 @@ export default function BookingForm() {
           {formError || (availabilityState === "unavailable" ? "Live availability is unavailable; Formspree email fallback remains active." : "Your request stays pending while we confirm availability. Pending requests do not reserve the date; only confirmed bookings do.")}
         </p>
       </form>
+
+      {isSubmitting ? (
+        <div className="booking-modal-backdrop booking-modal-backdrop--loading" role="status" aria-live="polite" aria-busy="true">
+          <div className="booking-modal booking-modal--loading">
+            <p className="eyebrow">Please wait</p>
+            <h2>Sending your <em>request.</em></h2>
+            <p>We are checking the selected dates and saving your booking request.</p>
+            <div className="booking-loading-indicator" aria-hidden="true"><span /><span /><span /></div>
+          </div>
+        </div>
+      ) : null}
 
       {success ? (
         <div

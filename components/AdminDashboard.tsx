@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { BedDouble, CalendarDays, ClipboardList, LayoutDashboard, LogOut, Plus, RefreshCw, ShieldCheck, SlidersHorizontal } from "lucide-react";
+import { BedDouble, CalendarDays, ClipboardList, LayoutDashboard, LoaderCircle, LogOut, Plus, RefreshCw, ShieldCheck, SlidersHorizontal } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import BookingCalendar from "@/components/BookingCalendar";
 import { Badge } from "@/components/ui/badge";
@@ -294,12 +294,19 @@ export default function AdminDashboard() {
   const frontDeskBookings = dashboard?.bookings
     .filter((booking) => ["confirmed", "checked_in"].includes(booking.status))
     .sort((first, second) => first.check_in.localeCompare(second.check_in)) || [];
-  const frontDeskArrivals = frontDeskBookings.filter((booking) => booking.status === "confirmed" && booking.check_in === frontDeskDate);
-  const frontDeskInHouse = frontDeskBookings.filter((booking) => booking.status === "checked_in" && booking.check_in <= frontDeskDate && frontDeskDate < booking.check_out);
-  const frontDeskDepartures = frontDeskInHouse.filter((booking) => booking.check_out === frontDeskDate);
+  const frontDeskArrivals = frontDeskBookings.filter((booking) => booking.status === "confirmed" && booking.check_in <= frontDeskDate && frontDeskDate < booking.check_out);
+  const frontDeskInHouse = frontDeskBookings.filter((booking) => booking.status === "checked_in" && booking.check_in <= frontDeskDate);
+  const frontDeskDepartures = frontDeskInHouse.filter((booking) => booking.check_out <= frontDeskDate);
   const upcomingArrivals = frontDeskBookings.filter((booking) => booking.status === "confirmed" && booking.check_in > frontDeskDate).slice(0, 7);
   const frontDeskList = frontDeskTab === "arrivals" ? frontDeskArrivals : frontDeskInHouse;
   const canOperateFrontDesk = frontDeskDate === today;
+  const operationMessage = checkoutLoading
+    ? "Recording checkout…"
+    : createLoading
+      ? "Creating booking…"
+      : actionLoading
+        ? "Saving booking changes…"
+        : "";
 
   return (
     <main className="admin-page">
@@ -347,7 +354,7 @@ export default function AdminDashboard() {
             </div>
             <div className="admin-header-actions">
               <Button variant="secondary" onClick={() => void refreshDashboard()} disabled={isLoading}>
-                <RefreshCw size={16} aria-hidden="true" /> Refresh
+                <RefreshCw size={16} aria-hidden="true" /> {isLoading ? "Refreshing…" : "Refresh"}
               </Button>
               <Button onClick={() => { setCreateError(""); setCreateDialogOpen(true); }}>
                 <Plus size={16} aria-hidden="true" /> New booking
@@ -412,7 +419,7 @@ export default function AdminDashboard() {
               <div className="admin-summary-grid admin-summary-grid--three">
                 <Card><CardContent><span className="admin-stat-label">Arrivals</span><strong>{frontDeskArrivals.length}</strong><small>On {frontDeskDate}</small></CardContent></Card>
                 <Card><CardContent><span className="admin-stat-label">In-house</span><strong>{frontDeskInHouse.length}</strong><small>Staying on {frontDeskDate}</small></CardContent></Card>
-                <Card><CardContent><span className="admin-stat-label">Departures</span><strong>{frontDeskDepartures.length}</strong><small>Scheduled for {frontDeskDate}</small></CardContent></Card>
+                <Card><CardContent><span className="admin-stat-label">Departures due</span><strong>{frontDeskDepartures.length}</strong><small>Due or overdue on {frontDeskDate}</small></CardContent></Card>
               </div>
               <div className="admin-front-desk-toolbar">
                 <label className="admin-date-control">Operating date<input type="date" value={frontDeskDate} onChange={(event) => setFrontDeskDate(event.target.value)} /></label>
@@ -455,6 +462,12 @@ export default function AdminDashboard() {
         </div>
       </div>
 
+      {operationMessage ? (
+        <div className="admin-operation-overlay" role="status" aria-live="polite" aria-busy="true">
+          <div className="admin-operation-dialog"><LoaderCircle className="admin-operation-spinner" size={22} aria-hidden="true" /><strong>{operationMessage}</strong><span>Please wait while the booking record is updated.</span></div>
+        </div>
+      ) : null}
+
       <Dialog open={Boolean(selectedBooking)} onOpenChange={(open) => !open && setSelectedBooking(null)}>
         <DialogContent className="ui-dialog-content">
           {selectedBooking ? (
@@ -484,8 +497,8 @@ export default function AdminDashboard() {
                 </div>
               ) : null}
               <div className="admin-edit-fields">
-                <label>Check-in<input type="date" value={editDates.checkIn} onChange={(event) => setEditDates((current) => ({ ...current, checkIn: event.target.value }))} /></label>
-                <label>Check-out<input type="date" value={editDates.checkOut} onChange={(event) => setEditDates((current) => ({ ...current, checkOut: event.target.value }))} /></label>
+                <label>Check-in<input type="date" min={todayDateString()} value={editDates.checkIn} onChange={(event) => setEditDates((current) => ({ ...current, checkIn: event.target.value }))} /></label>
+                <label>Check-out<input type="date" min={editDates.checkIn ? addDays(editDates.checkIn, 1) : addDays(todayDateString(), 1)} value={editDates.checkOut} onChange={(event) => setEditDates((current) => ({ ...current, checkOut: event.target.value }))} /></label>
                 <label>Guests<select value={editDates.guestCount} onChange={(event) => setEditDates((current) => ({ ...current, guestCount: Number(event.target.value) }))}>{[1, 2, 3, 4].map((count) => <option key={count} value={count}>{count}</option>)}</select></label>
               </div>
               {actionError ? <p className="admin-error" role="alert">{actionError}</p> : null}
@@ -538,7 +551,7 @@ export default function AdminDashboard() {
               <label>Contact number<input required type="tel" value={createForm.contactNumber} onChange={(event) => setCreateForm((current) => ({ ...current, contactNumber: event.target.value }))} /></label>
               <label>Guests<select value={createForm.guestCount} onChange={(event) => setCreateForm((current) => ({ ...current, guestCount: Number(event.target.value) }))}>{[1, 2, 3, 4].map((count) => <option key={count} value={count}>{count}</option>)}</select></label>
               <label>Check-in<input required type="date" min={todayDateString()} value={createForm.checkIn} onChange={(event) => setCreateForm((current) => ({ ...current, checkIn: event.target.value }))} /></label>
-              <label>Check-out<input required type="date" min={todayDateString()} value={createForm.checkOut} onChange={(event) => setCreateForm((current) => ({ ...current, checkOut: event.target.value }))} /></label>
+              <label>Check-out<input required type="date" min={createForm.checkIn ? addDays(createForm.checkIn, 1) : addDays(todayDateString(), 1)} value={createForm.checkOut} onChange={(event) => setCreateForm((current) => ({ ...current, checkOut: event.target.value }))} /></label>
             </div>
             <label>Message<textarea rows={3} value={createForm.message} onChange={(event) => setCreateForm((current) => ({ ...current, message: event.target.value }))} /></label>
             {createError ? <p className="admin-error" role="alert">{createError}</p> : null}

@@ -43,6 +43,15 @@ test("public calendars treat pending requests as available", () => {
   assert.equal(calendarStatus("pending", false), "pending");
 });
 
+test("public availability does not keep checked-out stays booked", () => {
+  const availabilityFunction = readFileSync(
+    join(process.cwd(), "supabase", "functions", "availability", "index.ts"),
+    "utf8",
+  );
+  assert.match(availabilityFunction, /\["confirmed", "checked_in"\]/);
+  assert.doesNotMatch(availabilityFunction, /\["confirmed", "checked_in", "checked_out"\]/);
+});
+
 test("expires a pending request at 24 hours", () => {
   const createdAt = new Date("2026-06-10T12:00:00.000Z");
   const expiry = new Date(createdAt.getTime() + 24 * 60 * 60 * 1000).toISOString();
@@ -86,4 +95,12 @@ test("migration enforces RLS and admin-only database access assumptions", () => 
   assert.match(frontDeskMigration, /p_actual_check_out date default null/);
   assert.match(frontDeskMigration, /early_checkout/);
   assert.match(frontDeskMigration, /night >= v_actual_check_out/);
+
+  const checkoutReleaseMigration = readFileSync(
+    join(process.cwd(), "supabase", "migrations", "20261106104203_release_checked_out_nights.sql"),
+    "utf8",
+  );
+  assert.match(checkoutReleaseMigration, /status = 'checked_out'/);
+  assert.match(checkoutReleaseMigration, /release_checked_out_booking_nights_trigger/);
+  assert.match(checkoutReleaseMigration, /delete from public\.booking_nights/);
 });
