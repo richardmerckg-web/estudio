@@ -1,0 +1,11 @@
+[functions.availability]
+verify_jwt = false
+
+[functions.create-booking]
+verify_jwt = false
+
+[functions.expire-pending-bookings]
+verify_jwt = false
+
+[functions.admin-bookings]
+verify_jwt = false

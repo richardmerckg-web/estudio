@@ -36,4 +36,8 @@ The easiest way to deploy your Next.js app is to use the [Vercel Platform](https
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
 
 # estudio
+
+## Booking feature
+
+Booking implementation and Supabase setup steps are documented in [docs/booking-setup.md](docs/booking-setup.md).
 # estudio
