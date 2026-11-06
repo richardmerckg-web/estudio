@@ -78,4 +78,12 @@ test("migration enforces RLS and admin-only database access assumptions", () => 
   assert.match(lifecycleMigration, /checked_out/);
   assert.match(lifecycleMigration, /create table if not exists public\.booking_audit_log/);
   assert.match(lifecycleMigration, /create or replace function public\.admin_create_booking/);
+
+  const frontDeskMigration = readFileSync(
+    join(process.cwd(), "supabase", "migrations", "20261106100151_front_desk_checkout_workflow.sql"),
+    "utf8",
+  );
+  assert.match(frontDeskMigration, /p_actual_check_out date default null/);
+  assert.match(frontDeskMigration, /early_checkout/);
+  assert.match(frontDeskMigration, /night >= v_actual_check_out/);
 });

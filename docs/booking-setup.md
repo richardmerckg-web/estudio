@@ -17,7 +17,7 @@ The publishable Supabase key is safe for browser use. Never add a Supabase secre
 
 ## Apply the database migration
 
-The booking migrations are applied to the production `estudio` Supabase project. Keep the migration files in sync with the remote migration history before making further schema changes. The latest lifecycle migration adds checked-in/checked-out states, direct admin-created confirmed bookings, and an admin audit log.
+The booking migrations are applied to the production `estudio` Supabase project. Keep the migration files in sync with the remote migration history before making further schema changes. The lifecycle migrations add checked-in/checked-out states, direct admin-created confirmed bookings, an admin audit log, and front-desk checkout with early-departure night release.
 
 ## Deploy Edge Functions
 
@@ -43,7 +43,7 @@ Schedule `expire-pending-bookings` to run regularly with an `x-cron-secret` head
 
 Create the administrator in Supabase Auth, then insert that user’s UUID into `public.admin_users` using the SQL editor or a protected server-side workflow. Do not use editable user metadata for authorization.
 
-The dashboard is available at `/admin`. It has no public signup flow. Admins can review requests, confirm/reject them, create direct confirmed bookings for phone or walk-in guests, edit eligible bookings, block dates, check guests in, record checkout, and review the booking activity log.
+The dashboard is available at `/admin`. It has no public signup flow. The admin workspace is organized into Overview, Requests, Front desk, Calendar, and Blocked dates. Admins can review requests, confirm/reject them, create direct confirmed bookings for phone or walk-in guests, edit eligible bookings, block dates, check guests in, and record normal or early checkout. Early checkout updates the reservation's actual checkout date and releases unused future nights; normal checkout preserves the original stay history.
 
 ## Resend and Formspree
 

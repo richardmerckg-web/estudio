@@ -159,6 +159,7 @@ Deno.serve(async (request) => {
         p_new_check_in: typeof input.checkIn === "string" ? input.checkIn : null,
         p_new_check_out: typeof input.checkOut === "string" ? input.checkOut : null,
         p_new_guest_count: Number.isInteger(input.guestCount) ? input.guestCount : null,
+        p_actual_check_out: typeof input.actualCheckOut === "string" ? input.actualCheckOut : null,
       });
       if (notificationEvents.has(action)) {
         notificationEvent = action;

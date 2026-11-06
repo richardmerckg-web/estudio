@@ -3676,3 +3676,141 @@ em {
     min-height: 0;
   }
 }
+
+/* Front desk operations */
+.admin-summary-grid--three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.admin-front-desk-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+  margin-top: 0.8rem;
+}
+
+.admin-stay-list {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.admin-stay-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 0;
+  border-bottom: 1px solid #edf0ec;
+}
+
+.admin-stay-row:last-child {
+  border-bottom: 0;
+}
+
+.admin-stay-row > div:first-child {
+  min-width: 0;
+}
+
+.admin-stay-row strong,
+.admin-stay-row small {
+  display: block;
+}
+
+.admin-stay-row strong {
+  overflow: hidden;
+  color: #1f2422;
+  font-size: 0.82rem;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-stay-row small {
+  margin-top: 0.2rem;
+  color: #7a847c;
+  font-size: 0.69rem;
+}
+
+.admin-stay-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.admin-front-desk-note {
+  display: flex;
+  gap: 0.7rem;
+  margin-top: 0.8rem;
+  padding: 1rem;
+  border: 1px solid #dfe4de;
+  background: #eef1ed;
+  color: #59635b;
+  font-size: 0.77rem;
+}
+
+.admin-front-desk-note strong,
+.admin-front-desk-note p {
+  display: block;
+}
+
+.admin-front-desk-note strong {
+  color: #39403c;
+  font-size: 0.8rem;
+}
+
+.admin-front-desk-note p {
+  margin-top: 0.35rem;
+  line-height: 1.55;
+}
+
+.admin-checkout-form {
+  display: grid;
+  gap: 0.9rem;
+  margin-top: 1rem;
+}
+
+.admin-checkout-form > label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  color: #5b645d;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.admin-checkout-form input {
+  min-height: 2.55rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid #d6dcd5;
+  border-radius: 5px;
+  background: #fff;
+  color: #1f2422;
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.admin-checkout-form input:focus {
+  border-color: #a97561;
+  outline: 2px solid rgba(169, 117, 97, 0.18);
+  outline-offset: 1px;
+}
+
+@media (max-width: 900px) {
+  .admin-summary-grid--three,
+  .admin-front-desk-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .admin-stay-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .admin-stay-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+}

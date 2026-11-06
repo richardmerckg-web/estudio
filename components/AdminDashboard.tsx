@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CalendarDays, ClipboardList, LayoutDashboard, LogOut, Plus, RefreshCw, ShieldCheck, SlidersHorizontal } from "lucide-react";
+import { BedDouble, CalendarDays, ClipboardList, LayoutDashboard, LogOut, Plus, RefreshCw, ShieldCheck, SlidersHorizontal } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import BookingCalendar from "@/components/BookingCalendar";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  addDays,
   formatDateRange,
   getBookingStatusLabel,
   monthKey,
@@ -31,18 +32,20 @@ import { supabase } from "@/lib/supabase";
 
 const statusOptions = ["all", "pending", "confirmed", "checked_in", "checked_out", "rejected", "cancelled", "expired"];
 
-type AdminView = "overview" | "bookings" | "calendar" | "blocked";
+type AdminView = "overview" | "requests" | "front_desk" | "calendar" | "blocked";
 
 const adminNavItems: Array<{ id: AdminView; label: string; description: string; icon: LucideIcon }> = [
   { id: "overview", label: "Overview", description: "At-a-glance status", icon: LayoutDashboard },
-  { id: "bookings", label: "Bookings", description: "Requests and stays", icon: ClipboardList },
+  { id: "requests", label: "Requests", description: "Pending and history", icon: ClipboardList },
+  { id: "front_desk", label: "Front desk", description: "Arrivals and checkout", icon: BedDouble },
   { id: "calendar", label: "Calendar", description: "Availability overview", icon: CalendarDays },
   { id: "blocked", label: "Blocked dates", description: "Owner and maintenance holds", icon: SlidersHorizontal },
 ];
 
 const adminViewMeta: Record<AdminView, { title: string; description: string }> = {
   overview: { title: "Booking overview", description: "A quick view of current requests, stays, and availability." },
-  bookings: { title: "Bookings", description: "Review requests, update stay details, and manage the guest lifecycle." },
+  requests: { title: "Requests and history", description: "Review requests, update reservation details, and manage booking records." },
+  front_desk: { title: "Front desk", description: "Manage arrivals, in-house guests, and checkout without searching the full history." },
   calendar: { title: "Availability calendar", description: "See which nights are available, booked, or blocked." },
   blocked: { title: "Blocked dates", description: "Reserve dates for owner stays, maintenance, or other unavailable periods." },
 };
@@ -74,6 +77,10 @@ export default function AdminDashboard() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [createError, setCreateError] = useState("");
   const [createLoading, setCreateLoading] = useState(false);
+  const [checkoutBooking, setCheckoutBooking] = useState<AdminBooking | null>(null);
+  const [checkoutDate, setCheckoutDate] = useState("");
+  const [checkoutError, setCheckoutError] = useState("");
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [createForm, setCreateForm] = useState({
     guestName: "",
     guestEmail: "",
@@ -106,13 +113,13 @@ export default function AdminDashboard() {
     setIsLoading(true);
     setDashboardError("");
     try {
-      setDashboard(await fetchAdminData({ month, status }));
+      setDashboard(await fetchAdminData({ month: activeView === "front_desk" ? "" : month, status }));
     } catch (error) {
       setDashboardError(error instanceof Error ? error.message : "Could not load the dashboard.");
     } finally {
       setIsLoading(false);
     }
-  }, [month, sessionEmail, status]);
+  }, [activeView, month, sessionEmail, status]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => void loadDashboard(), 0);
@@ -179,6 +186,11 @@ export default function AdminDashboard() {
     await loadDashboard();
   };
 
+  const navigateTo = (view: AdminView, nextStatus?: string) => {
+    setActiveView(view);
+    setStatus(nextStatus || (view === "requests" ? "pending" : "all"));
+  };
+
   const openBooking = (booking: AdminBooking) => {
     setSelectedBooking(booking);
     setActionError("");
@@ -187,6 +199,29 @@ export default function AdminDashboard() {
       checkOut: booking.check_out,
       guestCount: booking.guest_count,
     });
+  };
+
+  const openCheckout = (booking: AdminBooking) => {
+    setCheckoutBooking(booking);
+    setCheckoutDate(booking.check_out);
+    setCheckoutError("");
+  };
+
+  const completeCheckout = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!checkoutBooking) return;
+    setCheckoutLoading(true);
+    setCheckoutError("");
+    try {
+      await performAdminAction({ action: "check_out", bookingId: checkoutBooking.id, actualCheckOut: checkoutDate });
+      setCheckoutBooking(null);
+      setCalendarRefreshKey((value) => value + 1);
+      await loadDashboard();
+    } catch (error) {
+      setCheckoutError(error instanceof Error ? error.message : "Checkout could not be completed.");
+    } finally {
+      setCheckoutLoading(false);
+    }
   };
 
   const blockDate = async (shouldBlock: boolean) => {
@@ -243,10 +278,17 @@ export default function AdminDashboard() {
 
   const summary = dashboard?.summary;
   const viewMeta = adminViewMeta[activeView];
+  const today = todayDateString();
   const pendingBookings = dashboard?.bookings.filter((booking) => booking.status === "pending") || [];
   const upcomingBookings = dashboard?.bookings
     .filter((booking) => ["confirmed", "checked_in"].includes(booking.status))
     .slice(0, 5) || [];
+  const frontDeskBookings = dashboard?.bookings
+    .filter((booking) => ["confirmed", "checked_in"].includes(booking.status))
+    .sort((first, second) => first.check_in.localeCompare(second.check_in)) || [];
+  const arrivals = frontDeskBookings.filter((booking) => booking.status === "confirmed");
+  const inHouse = frontDeskBookings.filter((booking) => booking.status === "checked_in");
+  const departingToday = inHouse.filter((booking) => booking.check_out === today);
 
   return (
     <main className="admin-page">
@@ -267,7 +309,7 @@ export default function AdminDashboard() {
                 type="button"
                 className={`admin-nav-button ${activeView === id ? "admin-nav-button--active" : ""}`.trim()}
                 aria-current={activeView === id ? "page" : undefined}
-                onClick={() => setActiveView(id)}
+                onClick={() => navigateTo(id)}
               >
                 <Icon size={18} strokeWidth={1.8} aria-hidden="true" />
                 <span><strong>{label}</strong><small>{description}</small></span>
@@ -320,19 +362,19 @@ export default function AdminDashboard() {
               </div>
               <div className="admin-overview-grid">
                 <Card className="admin-calendar-card">
-                  <CardHeader><div className="admin-card-heading-row"><div><CardTitle>Availability at a glance</CardTitle><p className="admin-muted">Private booking details stay in the Bookings view.</p></div><Button variant="ghost" onClick={() => setActiveView("calendar")}>Open calendar</Button></div></CardHeader>
+                  <CardHeader><div className="admin-card-heading-row"><div><CardTitle>Availability at a glance</CardTitle><p className="admin-muted">Private booking details stay in the Requests view.</p></div><Button variant="ghost" onClick={() => navigateTo("calendar")}>Open calendar</Button></div></CardHeader>
                   <CardContent><BookingCalendar checkIn="" checkOut="" onRangeChange={() => undefined} readOnly refreshKey={calendarRefreshKey} /></CardContent>
                 </Card>
                 <Card className="admin-attention-card">
                   <CardHeader><CardTitle>Needs attention</CardTitle><p className="admin-muted">Requests waiting for an admin decision.</p></CardHeader>
                   <CardContent>
                     {pendingBookings.length ? <div className="admin-attention-list">{pendingBookings.slice(0, 4).map((booking) => <button key={booking.id} type="button" onClick={() => openBooking(booking)}><span><strong>{booking.guest_name}</strong><small>{formatDateRange(booking.check_in, booking.check_out)}</small></span><Badge variant="pending">Pending</Badge></button>)}</div> : <p className="admin-empty">No pending requests right now.</p>}
-                    <Button className="admin-full-width-button" variant="secondary" onClick={() => { setStatus("pending"); setActiveView("bookings"); }}>View pending bookings</Button>
+                    <Button className="admin-full-width-button" variant="secondary" onClick={() => navigateTo("requests", "pending")}>View pending requests</Button>
                   </CardContent>
                 </Card>
               </div>
               <Card className="admin-table-card">
-                <CardHeader><div className="admin-card-heading-row"><div><CardTitle>Upcoming stays</CardTitle><p className="admin-muted">Confirmed stays in the selected month.</p></div><Button variant="ghost" onClick={() => setActiveView("bookings")}>View all bookings</Button></div></CardHeader>
+                <CardHeader><div className="admin-card-heading-row"><div><CardTitle>Upcoming stays</CardTitle><p className="admin-muted">Confirmed stays in the selected month.</p></div><Button variant="ghost" onClick={() => navigateTo("front_desk")}>Open front desk</Button></div></CardHeader>
                 <CardContent>
                   {upcomingBookings.length ? <div className="admin-upcoming-list">{upcomingBookings.map((booking) => <button key={booking.id} type="button" onClick={() => openBooking(booking)}><span><strong>{booking.guest_name}</strong><small>{formatDateRange(booking.check_in, booking.check_out)} · {booking.booking_reference}</small></span><Badge variant={booking.status}>{getBookingStatusLabel(booking.status)}</Badge></button>)}</div> : <p className="admin-empty">No upcoming confirmed stays in this month.</p>}
                 </CardContent>
@@ -340,7 +382,7 @@ export default function AdminDashboard() {
             </section>
           ) : null}
 
-          {activeView === "bookings" ? (
+          {activeView === "requests" ? (
             <section className="admin-view-section" aria-labelledby="bookings-heading">
               <div className="admin-section-heading"><div><h2 id="bookings-heading">Requests and stays</h2><p className="admin-muted">Select a booking to review contact details or update its status.</p></div><div className="admin-filters"><label>Month<input type="month" value={month} onChange={(event) => setMonth(event.target.value)} /></label><label>Status<select value={status} onChange={(event) => setStatus(event.target.value)}>{statusOptions.map((option) => <option key={option} value={option}>{option === "all" ? "All statuses" : getBookingStatusLabel(option as BookingStatus)}</option>)}</select></label></div></div>
               <Card className="admin-table-card admin-table-card--flush">
@@ -353,9 +395,34 @@ export default function AdminDashboard() {
             </section>
           ) : null}
 
+          {activeView === "front_desk" ? (
+            <section className="admin-view-section" aria-labelledby="front-desk-heading">
+              <h2 className="sr-only" id="front-desk-heading">Front desk operations</h2>
+              <div className="admin-summary-grid admin-summary-grid--three">
+                <Card><CardContent><span className="admin-stat-label">Arrivals</span><strong>{arrivals.length}</strong><small>Confirmed reservations</small></CardContent></Card>
+                <Card><CardContent><span className="admin-stat-label">In-house</span><strong>{inHouse.length}</strong><small>Guests currently checked in</small></CardContent></Card>
+                <Card><CardContent><span className="admin-stat-label">Departures today</span><strong>{departingToday.length}</strong><small>Scheduled to check out today</small></CardContent></Card>
+              </div>
+              <div className="admin-front-desk-grid">
+                <Card>
+                  <CardHeader><CardTitle>Arrivals and reservations</CardTitle><p className="admin-muted">Check guests in when they arrive.</p></CardHeader>
+                  <CardContent>
+                    {arrivals.length ? <div className="admin-stay-list">{arrivals.map((booking) => <div className="admin-stay-row" key={booking.id}><div><strong>{booking.guest_name}</strong><small>{formatDateRange(booking.check_in, booking.check_out)} · {booking.guest_count} guest{booking.guest_count === 1 ? "" : "s"}</small></div><div className="admin-stay-actions"><Badge variant="confirmed">Confirmed</Badge><Button variant="secondary" onClick={() => void runAction({ action: "check_in", bookingId: booking.id })}>Check in</Button></div></div>)}</div> : <p className="admin-empty">No confirmed arrivals in the selected month.</p>}
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader><CardTitle>In-house guests</CardTitle><p className="admin-muted">Record checkout and release unused nights for early departures.</p></CardHeader>
+                  <CardContent>
+                    {inHouse.length ? <div className="admin-stay-list">{inHouse.map((booking) => <div className="admin-stay-row" key={booking.id}><div><strong>{booking.guest_name}</strong><small>Scheduled checkout {booking.check_out} · {booking.booking_reference}</small></div><div className="admin-stay-actions"><Badge variant="checked_in">Checked in</Badge><Button onClick={() => openCheckout(booking)}>Check out</Button></div></div>)}</div> : <p className="admin-empty">No guests are currently checked in.</p>}
+                  </CardContent>
+                </Card>
+              </div>
+              <div className="admin-front-desk-note"><BedDouble size={18} aria-hidden="true" /><div><strong>Checkout rule</strong><p>Normal checkout keeps the original stay history. An earlier actual checkout date releases the unused nights and makes them available again.</p></div></div>
+            </section>
+          ) : null}
+
           {activeView === "calendar" ? (
-            <section className="admin-view-section" aria-labelledby="calendar-heading">
-              <h2 className="sr-only" id="calendar-heading">Availability calendar</h2>
+            <section className="admin-view-section" aria-label="Availability calendar content">
               <Card className="admin-calendar-card admin-calendar-card--full"><CardContent><BookingCalendar checkIn="" checkOut="" onRangeChange={() => undefined} readOnly refreshKey={calendarRefreshKey} /></CardContent></Card>
             </section>
           ) : null}
@@ -411,11 +478,34 @@ export default function AdminDashboard() {
                 {selectedBooking.status === "pending" ? <Button disabled={actionLoading} onClick={() => void runAction({ action: "confirm", bookingId: selectedBooking.id })}>Confirm</Button> : null}
                 {selectedBooking.status === "pending" ? <Button variant="danger" disabled={actionLoading} onClick={() => void runAction({ action: "reject", bookingId: selectedBooking.id })}>Reject</Button> : null}
                 {selectedBooking.status === "confirmed" ? <Button disabled={actionLoading} onClick={() => void runAction({ action: "check_in", bookingId: selectedBooking.id })}>Check in</Button> : null}
-                {selectedBooking.status === "checked_in" ? <Button disabled={actionLoading} onClick={() => void runAction({ action: "check_out", bookingId: selectedBooking.id })}>Check out</Button> : null}
+                {selectedBooking.status === "checked_in" ? <Button disabled={actionLoading} onClick={() => openCheckout(selectedBooking)}>Check out</Button> : null}
                 {selectedBooking.status === "confirmed" ? <Button variant="danger" disabled={actionLoading} onClick={() => void runAction({ action: "cancel", bookingId: selectedBooking.id })}>Cancel</Button> : null}
                 {selectedBooking.status === "checked_in" ? <Button variant="danger" disabled={actionLoading} onClick={() => void runAction({ action: "cancel", bookingId: selectedBooking.id })}>Cancel</Button> : null}
                 <DialogClose asChild><Button variant="ghost">Close</Button></DialogClose>
               </div>
+            </>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(checkoutBooking)} onOpenChange={(open) => !open && setCheckoutBooking(null)}>
+        <DialogContent className="ui-dialog-content">
+          {checkoutBooking ? (
+            <>
+              <DialogTitle>Check out {checkoutBooking.guest_name}</DialogTitle>
+              <DialogDescription>Use the scheduled date for a normal checkout, or select an earlier date to release unused nights.</DialogDescription>
+              <form className="admin-checkout-form" onSubmit={completeCheckout}>
+                <div className="booking-detail-grid">
+                  <div><span>Reference</span><strong>{checkoutBooking.booking_reference}</strong></div>
+                  <div><span>Scheduled checkout</span><strong>{checkoutBooking.check_out}</strong></div>
+                </div>
+                <label>Actual checkout date<input required type="date" min={addDays(checkoutBooking.check_in, 1)} max={checkoutBooking.check_out} value={checkoutDate} onChange={(event) => setCheckoutDate(event.target.value)} /></label>
+                {checkoutError ? <p className="admin-error" role="alert">{checkoutError}</p> : null}
+                <div className="admin-dialog-actions">
+                  <DialogClose asChild><Button type="button" variant="ghost">Cancel</Button></DialogClose>
+                  <Button type="submit" disabled={checkoutLoading}>{checkoutLoading ? "Saving…" : "Confirm checkout"}</Button>
+                </div>
+              </form>
             </>
           ) : null}
         </DialogContent>

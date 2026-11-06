@@ -67,7 +67,8 @@ export type AdminResponse = {
 };
 
 export type AdminAction =
-  | { action: "confirm" | "reject" | "cancel" | "check_in" | "check_out"; bookingId: string }
+  | { action: "confirm" | "reject" | "cancel" | "check_in"; bookingId: string }
+  | { action: "check_out"; bookingId: string; actualCheckOut?: string }
   | {
       action: "edit";
       bookingId: string;
