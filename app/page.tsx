@@ -190,8 +190,8 @@ export default function Home() {
               morning, and an easy place to settle in.
             </p>
             <div className="statement-facts">
-              <span>Weekdays ₱1,800</span>
-              <span>Weekends ₱2,300</span>
+              <span>Weekdays ₱2,000</span>
+              <span>Weekends ₱2,500</span>
               <span>Up to 4 guests</span>
             </div>
           </div>
@@ -218,14 +218,14 @@ export default function Home() {
                 <span className="rate-label">Weekdays</span>
                 <span className="rate-description">Good for up to 4 guests</span>
               </div>
-              <strong>₱1,800</strong>
+              <strong>₱2,000</strong>
             </div>
             <div className="rate-row">
               <div className="rate-copy">
                 <span className="rate-label">Weekends</span>
                 <span className="rate-description">Good for up to 4 guests</span>
               </div>
-              <strong>₱2,300</strong>
+              <strong>₱2,500</strong>
             </div>
             <div className="rate-row">
               <div className="rate-copy">
@@ -409,8 +409,8 @@ export default function Home() {
               reservation information.
             </p>
             <div className="booking-summary">
-              <span>Weekdays / ₱1,800</span>
-              <span>Weekends / ₱2,300</span>
+              <span>Weekdays / ₱2,000</span>
+              <span>Weekends / ₱2,500</span>
               <span>Up to 4 guests</span>
             </div>
           </div>

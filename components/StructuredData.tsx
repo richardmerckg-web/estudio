@@ -33,7 +33,7 @@ const jsonLd = {
       numberOfRooms: 1,
       checkinTime: "14:00:00+08:00",
       checkoutTime: "12:00:00+08:00",
-      priceRange: "₱1,800–₱2,300",
+      priceRange: "₱2,000–₱2,500",
       currenciesAccepted: "PHP",
       containsPlace: {
         "@type": "Accommodation",
