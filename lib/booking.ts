@@ -147,7 +147,15 @@ export function calendarStatus(status: AvailabilityStatus, isPublicCalendar = fa
 }
 
 export function getBookingStatusLabel(status: BookingStatus) {
-  return status.charAt(0).toUpperCase() + status.slice(1);
+  return {
+    pending: "Pending",
+    confirmed: "Confirmed",
+    checked_in: "Checked in",
+    checked_out: "Checked out",
+    rejected: "Rejected",
+    cancelled: "Cancelled",
+    expired: "Expired",
+  }[status];
 }
 
 export function isPendingExpired(expiresAt: string, now = new Date()) {
