@@ -25,6 +25,7 @@ type BookingCalendarProps = {
   onAvailabilityState?: (state: "loading" | "ready" | "unavailable") => void;
   readOnly?: boolean;
   title?: string;
+  refreshKey?: number;
 };
 
 type CalendarCell = {
@@ -54,6 +55,7 @@ export default function BookingCalendar({
   onAvailabilityState,
   readOnly = false,
   title = "Choose your dates",
+  refreshKey = 0,
 }: BookingCalendarProps) {
   const today = todayDateString();
   const [month, setMonth] = useState(monthKey(today));
@@ -91,7 +93,7 @@ export default function BookingCalendar({
     return () => {
       isMounted = false;
     };
-  }, [month, onAvailabilityReady, onAvailabilityState]);
+  }, [month, onAvailabilityReady, onAvailabilityState, refreshKey]);
 
   const calendarCells = useMemo(() => buildCalendar(month), [month]);
   const isPublicCalendar = !readOnly;

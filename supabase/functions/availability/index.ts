@@ -70,7 +70,9 @@ Deno.serve(async (request) => {
     const occupied = new Map(
       (nights || []).map((night) => [
         night.night,
-        statusByBooking.get(night.booking_id) === "confirmed" ? "booked" : "available",
+        ["confirmed", "checked_in", "checked_out"].includes(statusByBooking.get(night.booking_id) || "")
+          ? "booked"
+          : "available",
       ]),
     );
 

@@ -40,6 +40,7 @@ test("public calendars treat pending requests as available", () => {
   assert.equal(calendarStatus("pending", true), "available");
   assert.equal(calendarStatus("pending", false), "pending");
   assert.equal(calendarStatus("booked", true), "booked");
+  assert.equal(calendarStatus("pending", false), "pending");
 });
 
 test("expires a pending request at 24 hours", () => {
@@ -51,7 +52,9 @@ test("expires a pending request at 24 hours", () => {
 
 test("allows only the intended booking status transitions", () => {
   assert.deepEqual(BOOKING_STATUS_TRANSITIONS.pending, ["confirmed", "rejected", "cancelled"]);
-  assert.deepEqual(BOOKING_STATUS_TRANSITIONS.confirmed, ["cancelled"]);
+  assert.deepEqual(BOOKING_STATUS_TRANSITIONS.confirmed, ["checked_in", "checked_out", "cancelled"]);
+  assert.deepEqual(BOOKING_STATUS_TRANSITIONS.checked_in, ["checked_out", "cancelled"]);
+  assert.deepEqual(BOOKING_STATUS_TRANSITIONS.checked_out, []);
   assert.deepEqual(BOOKING_STATUS_TRANSITIONS.expired, []);
 });
 
@@ -66,4 +69,13 @@ test("migration enforces RLS and admin-only database access assumptions", () => 
   assert.match(migration, /revoke all on table public\.admin_users, public\.bookings, public\.booking_nights, public\.blocked_dates from anon;/);
   assert.match(migration, /revoke all on function public\.create_pending_booking/);
   assert.match(migration, /Admins can read bookings/);
+
+  const lifecycleMigration = readFileSync(
+    join(process.cwd(), "supabase", "migrations", "20261106082235_booking_lifecycle_admin_audit.sql"),
+    "utf8",
+  );
+  assert.match(lifecycleMigration, /checked_in/);
+  assert.match(lifecycleMigration, /checked_out/);
+  assert.match(lifecycleMigration, /create table if not exists public\.booking_audit_log/);
+  assert.match(lifecycleMigration, /create or replace function public\.admin_create_booking/);
 });

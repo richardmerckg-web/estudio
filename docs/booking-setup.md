@@ -17,13 +17,7 @@ The publishable Supabase key is safe for browser use. Never add a Supabase secre
 
 ## Apply the database migration
 
-The migration is intentionally created but not applied by this implementation:
-
-```text
-supabase/migrations/20261106064408_booking_system.sql
-```
-
-Review it, link the local CLI to the `estudio` project, then apply it through the normal Supabase migration workflow. The migration creates the four booking tables, RLS policies, conflict-safe booking functions, and indexes.
+The booking migrations are applied to the production `estudio` Supabase project. Keep the migration files in sync with the remote migration history before making further schema changes. The latest lifecycle migration adds checked-in/checked-out states, direct admin-created confirmed bookings, and an admin audit log.
 
 ## Deploy Edge Functions
 
@@ -43,17 +37,19 @@ Set these Edge Function secrets before deployment:
 
 Supabase automatically provides the project URL and function API keys. The functions support both the current publishable/secret key environment variables and legacy compatibility variables.
 
-Schedule `expire-pending-bookings` to run regularly with an `x-cron-secret` header. Pending requests expire after 24 hours and are also expired opportunistically during availability and new-booking requests. Pending requests do not occupy dates; only confirmed bookings do.
+Schedule `expire-pending-bookings` to run regularly with an `x-cron-secret` header. The production project also has an active `pg_cron` job running every 15 minutes. Pending requests expire after 24 hours and are also expired opportunistically during availability and new-booking requests. Pending requests do not occupy dates; only confirmed bookings do.
 
 ## Create the first admin
 
 Create the administrator in Supabase Auth, then insert that user’s UUID into `public.admin_users` using the SQL editor or a protected server-side workflow. Do not use editable user metadata for authorization.
 
-The dashboard is available at `/admin`. It has no public signup flow.
+The dashboard is available at `/admin`. It has no public signup flow. Admins can review requests, confirm/reject them, create direct confirmed bookings for phone or walk-in guests, edit eligible bookings, block dates, check guests in, record checkout, and review the booking activity log.
 
 ## Resend and Formspree
 
-Formspree remains the primary Gmail notification path for the visitor form. The browser submits the same request to Formspree after the Supabase booking request succeeds. If Supabase is unavailable, the form safely falls back to Formspree. Resend is sent by the `create-booking` Edge Function and its delivery status is stored with the booking.
+Formspree remains the primary Gmail notification path for the visitor form. The browser submits the same request to Formspree after the Supabase booking request succeeds. If Supabase is unavailable, the form safely falls back to Formspree. Resend sends the visitor's pending-request email and admin lifecycle notifications when `RESEND_API_KEY` and `RESEND_FROM_EMAIL` are configured; delivery status is stored with the booking.
+
+Enable Supabase Auth's leaked-password protection in the project Auth settings. This is a hosted security setting and is not controlled by the website source.
 
 ## Free-plan availability
 

@@ -3025,6 +3025,8 @@ em {
 
 .ui-badge--pending { background: #f5eddc; color: #8d6c39; }
 .ui-badge--confirmed { background: #e4efe6; color: #41734c; }
+.ui-badge--checked_in { background: #e4edf2; color: #3f687c; }
+.ui-badge--checked_out { background: #e9e5f1; color: #665481; }
 .ui-badge--rejected,
 .ui-badge--cancelled,
 .ui-badge--expired { background: #f2e5e1; color: #925d54; }
@@ -3197,6 +3199,23 @@ em {
 .booking-detail-grid a { text-decoration: underline; text-decoration-color: #c8d1c8; }
 .booking-detail-message { margin-top: 1.2rem; padding: 0.8rem; background: #f7f8f6; color: #59635b; font-size: 0.82rem; }
 
+.admin-audit-log { margin-top: 1.2rem; padding-top: 1rem; border-top: 1px solid #e4e8e3; }
+.admin-audit-log h3 { margin: 0 0 0.55rem; color: #5b645d; font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; }
+.admin-audit-log ol { display: grid; gap: 0.45rem; margin: 0; padding-left: 1.2rem; color: #59635b; font-size: 0.78rem; }
+.admin-audit-log li { display: flex; justify-content: space-between; gap: 1rem; }
+.admin-audit-log li span { color: #88918a; white-space: nowrap; }
+
+.admin-create-form { display: grid; gap: 0.85rem; margin-top: 1rem; }
+.admin-create-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; }
+.admin-create-form label { display: flex; flex-direction: column; gap: 0.35rem; color: #5b645d; font-size: 0.72rem; font-weight: 600; }
+.admin-create-form input,
+.admin-create-form select,
+.admin-create-form textarea { min-height: 2.55rem; padding: 0.55rem 0.65rem; border: 1px solid #d6dcd5; border-radius: 5px; background: #fff; color: #1f2422; font: inherit; font-size: 0.85rem; }
+.admin-create-form textarea { resize: vertical; }
+.admin-create-form input:focus,
+.admin-create-form select:focus,
+.admin-create-form textarea:focus { border-color: #a97561; outline: 2px solid rgba(169, 117, 97, 0.18); outline-offset: 1px; }
+
 .admin-edit-fields {
   display: grid;
   grid-template-columns: 1fr 1fr 0.7fr;
@@ -3239,5 +3258,6 @@ em {
   .admin-summary-grid .ui-card-content { padding: 0.8rem; }
   .admin-summary-grid strong { font-size: 1.35rem; }
   .booking-detail-grid,
-  .admin-edit-fields { grid-template-columns: 1fr; }
+  .admin-edit-fields,
+  .admin-create-grid { grid-template-columns: 1fr; }
 }

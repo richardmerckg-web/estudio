@@ -6,6 +6,8 @@ export const PENDING_HOLD_HOURS = 24;
 export type BookingStatus =
   | "pending"
   | "confirmed"
+  | "checked_in"
+  | "checked_out"
   | "rejected"
   | "cancelled"
   | "expired";
@@ -155,7 +157,9 @@ export function isPendingExpired(expiresAt: string, now = new Date()) {
 
 export const BOOKING_STATUS_TRANSITIONS: Record<BookingStatus, BookingStatus[]> = {
   pending: ["confirmed", "rejected", "cancelled"],
-  confirmed: ["cancelled"],
+  confirmed: ["checked_in", "checked_out", "cancelled"],
+  checked_in: ["checked_out", "cancelled"],
+  checked_out: [],
   rejected: [],
   cancelled: [],
   expired: [],

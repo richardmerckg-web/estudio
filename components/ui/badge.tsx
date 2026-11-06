@@ -1,6 +1,6 @@
 import type { HTMLAttributes } from "react";
 
-type BadgeVariant = "default" | "pending" | "confirmed" | "rejected" | "cancelled" | "expired";
+type BadgeVariant = "default" | "pending" | "confirmed" | "checked_in" | "checked_out" | "rejected" | "cancelled" | "expired";
 
 export function Badge({
   className = "",

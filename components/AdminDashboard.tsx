@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { LogOut, RefreshCw, ShieldCheck } from "lucide-react";
+import { LogOut, Plus, RefreshCw, ShieldCheck } from "lucide-react";
 import BookingCalendar from "@/components/BookingCalendar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -28,7 +28,7 @@ import {
 } from "@/lib/booking-api";
 import { supabase } from "@/lib/supabase";
 
-const statusOptions = ["all", "pending", "confirmed", "rejected", "cancelled", "expired"];
+const statusOptions = ["all", "pending", "confirmed", "checked_in", "checked_out", "rejected", "cancelled", "expired"];
 
 function money(value: number) {
   return `₱${value.toLocaleString("en-PH", { maximumFractionDigits: 0 })}`;
@@ -48,10 +48,23 @@ export default function AdminDashboard() {
   const [selectedBooking, setSelectedBooking] = useState<AdminBooking | null>(null);
   const [actionError, setActionError] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
+  const [calendarRefreshKey, setCalendarRefreshKey] = useState(0);
   const [blockedDate, setBlockedDate] = useState("");
   const [blockedReason, setBlockedReason] = useState("");
   const [blockError, setBlockError] = useState("");
   const [editDates, setEditDates] = useState({ checkIn: "", checkOut: "", guestCount: 1 });
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [createError, setCreateError] = useState("");
+  const [createLoading, setCreateLoading] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    guestName: "",
+    guestEmail: "",
+    contactNumber: "",
+    guestCount: 1,
+    checkIn: "",
+    checkOut: "",
+    message: "",
+  });
 
   useEffect(() => {
     if (!supabase) {
@@ -91,7 +104,7 @@ export default function AdminDashboard() {
   const filteredConfirmedRevenue = useMemo(
     () =>
       dashboard?.bookings
-        .filter((booking) => booking.status === "confirmed")
+        .filter((booking) => ["confirmed", "checked_in", "checked_out"].includes(booking.status))
         .reduce((total, booking) => total + Number(booking.total_amount), 0) || 0,
     [dashboard],
   );
@@ -115,6 +128,7 @@ export default function AdminDashboard() {
     try {
       await performAdminAction(action);
       setSelectedBooking(null);
+      setCalendarRefreshKey((value) => value + 1);
       await loadDashboard();
       return true;
     } catch (error) {
@@ -123,6 +137,28 @@ export default function AdminDashboard() {
     } finally {
       setActionLoading(false);
     }
+  };
+
+  const createBooking = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setCreateLoading(true);
+    setCreateError("");
+    try {
+      await performAdminAction({ action: "create", ...createForm });
+      setCreateDialogOpen(false);
+      setCreateForm({ guestName: "", guestEmail: "", contactNumber: "", guestCount: 1, checkIn: "", checkOut: "", message: "" });
+      setCalendarRefreshKey((value) => value + 1);
+      await loadDashboard();
+    } catch (error) {
+      setCreateError(error instanceof Error ? error.message : "Booking could not be created.");
+    } finally {
+      setCreateLoading(false);
+    }
+  };
+
+  const refreshDashboard = async () => {
+    setCalendarRefreshKey((value) => value + 1);
+    await loadDashboard();
   };
 
   const openBooking = (booking: AdminBooking) => {
@@ -199,8 +235,11 @@ export default function AdminDashboard() {
             <p className="admin-muted">Signed in as {sessionEmail}</p>
           </div>
           <div className="admin-header-actions">
-            <Button variant="secondary" onClick={() => void loadDashboard()} disabled={isLoading}>
+            <Button variant="secondary" onClick={() => void refreshDashboard()} disabled={isLoading}>
               <RefreshCw size={16} aria-hidden="true" /> Refresh
+            </Button>
+            <Button onClick={() => { setCreateError(""); setCreateDialogOpen(true); }}>
+              <Plus size={16} aria-hidden="true" /> New booking
             </Button>
             <Button variant="ghost" onClick={() => void signOut()}>
               <LogOut size={16} aria-hidden="true" /> Sign out
@@ -231,7 +270,7 @@ export default function AdminDashboard() {
         </div>
 
         <div className="admin-status-strip" aria-label="Booking status totals">
-          {(["confirmed", "pending", "rejected", "cancelled", "expired"] as BookingStatus[]).map((item) => (
+          {(["confirmed", "checked_in", "checked_out", "pending", "rejected", "cancelled", "expired"] as BookingStatus[]).map((item) => (
             <span key={item}><Badge variant={item}>{getBookingStatusLabel(item)}</Badge> {summary?.totals[item] ?? 0}</span>
           ))}
         </div>
@@ -239,7 +278,7 @@ export default function AdminDashboard() {
         <div className="admin-content-grid">
           <Card className="admin-calendar-card">
             <CardHeader><CardTitle>Availability calendar</CardTitle><p className="admin-muted">Private booking details are only shown in the table.</p></CardHeader>
-            <CardContent><BookingCalendar checkIn="" checkOut="" onRangeChange={() => undefined} readOnly /></CardContent>
+            <CardContent><BookingCalendar checkIn="" checkOut="" onRangeChange={() => undefined} readOnly refreshKey={calendarRefreshKey} /></CardContent>
           </Card>
           <Card>
             <CardHeader><CardTitle>Block a date</CardTitle><p className="admin-muted">Use this for owner stays, maintenance, or other unavailable dates.</p></CardHeader>
@@ -298,6 +337,19 @@ export default function AdminDashboard() {
                 <div><span>Total</span><strong>{money(Number(selectedBooking.total_amount))}</strong></div>
               </div>
               {selectedBooking.message ? <p className="booking-detail-message">{selectedBooking.message}</p> : null}
+              {selectedBooking.audit_log?.length ? (
+                <div className="admin-audit-log">
+                  <h3>Activity</h3>
+                  <ol>
+                    {selectedBooking.audit_log.map((entry) => (
+                      <li key={entry.id}>
+                        <strong>{entry.action.replaceAll("_", " ")}</strong>
+                        <span>{new Date(entry.created_at).toLocaleString("en-PH")}</span>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              ) : null}
               <div className="admin-edit-fields">
                 <label>Check-in<input type="date" value={editDates.checkIn} onChange={(event) => setEditDates((current) => ({ ...current, checkIn: event.target.value }))} /></label>
                 <label>Check-out<input type="date" value={editDates.checkOut} onChange={(event) => setEditDates((current) => ({ ...current, checkOut: event.target.value }))} /></label>
@@ -305,14 +357,40 @@ export default function AdminDashboard() {
               </div>
               {actionError ? <p className="admin-error" role="alert">{actionError}</p> : null}
               <div className="admin-dialog-actions">
-                <Button variant="secondary" disabled={actionLoading} onClick={() => void runAction({ action: "edit", bookingId: selectedBooking.id, ...editDates })}>Save edit</Button>
+                <Button variant="secondary" disabled={actionLoading || !["pending", "confirmed"].includes(selectedBooking.status)} onClick={() => void runAction({ action: "edit", bookingId: selectedBooking.id, ...editDates })}>Save edit</Button>
                 {selectedBooking.status === "pending" ? <Button disabled={actionLoading} onClick={() => void runAction({ action: "confirm", bookingId: selectedBooking.id })}>Confirm</Button> : null}
                 {selectedBooking.status === "pending" ? <Button variant="danger" disabled={actionLoading} onClick={() => void runAction({ action: "reject", bookingId: selectedBooking.id })}>Reject</Button> : null}
+                {selectedBooking.status === "confirmed" ? <Button disabled={actionLoading} onClick={() => void runAction({ action: "check_in", bookingId: selectedBooking.id })}>Check in</Button> : null}
+                {selectedBooking.status === "checked_in" ? <Button disabled={actionLoading} onClick={() => void runAction({ action: "check_out", bookingId: selectedBooking.id })}>Check out</Button> : null}
                 {selectedBooking.status === "confirmed" ? <Button variant="danger" disabled={actionLoading} onClick={() => void runAction({ action: "cancel", bookingId: selectedBooking.id })}>Cancel</Button> : null}
+                {selectedBooking.status === "checked_in" ? <Button variant="danger" disabled={actionLoading} onClick={() => void runAction({ action: "cancel", bookingId: selectedBooking.id })}>Cancel</Button> : null}
                 <DialogClose asChild><Button variant="ghost">Close</Button></DialogClose>
               </div>
             </>
           ) : null}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+        <DialogContent className="ui-dialog-content">
+          <DialogTitle>New confirmed booking</DialogTitle>
+          <DialogDescription>Create a direct booking for a phone, walk-in, or moved guest. This reserves the selected nights immediately.</DialogDescription>
+          <form className="admin-create-form" onSubmit={createBooking}>
+            <div className="admin-create-grid">
+              <label>Full name<input required minLength={2} value={createForm.guestName} onChange={(event) => setCreateForm((current) => ({ ...current, guestName: event.target.value }))} /></label>
+              <label>Email<input required type="email" value={createForm.guestEmail} onChange={(event) => setCreateForm((current) => ({ ...current, guestEmail: event.target.value }))} /></label>
+              <label>Contact number<input required type="tel" value={createForm.contactNumber} onChange={(event) => setCreateForm((current) => ({ ...current, contactNumber: event.target.value }))} /></label>
+              <label>Guests<select value={createForm.guestCount} onChange={(event) => setCreateForm((current) => ({ ...current, guestCount: Number(event.target.value) }))}>{[1, 2, 3, 4].map((count) => <option key={count} value={count}>{count}</option>)}</select></label>
+              <label>Check-in<input required type="date" min={todayDateString()} value={createForm.checkIn} onChange={(event) => setCreateForm((current) => ({ ...current, checkIn: event.target.value }))} /></label>
+              <label>Check-out<input required type="date" min={todayDateString()} value={createForm.checkOut} onChange={(event) => setCreateForm((current) => ({ ...current, checkOut: event.target.value }))} /></label>
+            </div>
+            <label>Message<textarea rows={3} value={createForm.message} onChange={(event) => setCreateForm((current) => ({ ...current, message: event.target.value }))} /></label>
+            {createError ? <p className="admin-error" role="alert">{createError}</p> : null}
+            <div className="admin-dialog-actions">
+              <DialogClose asChild><Button type="button" variant="ghost">Cancel</Button></DialogClose>
+              <Button type="submit" disabled={createLoading}>{createLoading ? "Creating…" : "Create booking"}</Button>
+            </div>
+          </form>
         </DialogContent>
       </Dialog>
     </main>
