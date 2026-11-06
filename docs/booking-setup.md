@@ -43,7 +43,7 @@ Set these Edge Function secrets before deployment:
 
 Supabase automatically provides the project URL and function API keys. The functions support both the current publishable/secret key environment variables and legacy compatibility variables.
 
-Schedule `expire-pending-bookings` to run regularly with an `x-cron-secret` header. Pending holds are also expired opportunistically during availability and new-booking requests.
+Schedule `expire-pending-bookings` to run regularly with an `x-cron-secret` header. Pending requests expire after 24 hours and are also expired opportunistically during availability and new-booking requests. Pending requests do not occupy dates; only confirmed bookings do.
 
 ## Create the first admin
 

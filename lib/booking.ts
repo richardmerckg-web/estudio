@@ -140,6 +140,10 @@ export function getStatusLabel(status: AvailabilityStatus) {
   }[status];
 }
 
+export function calendarStatus(status: AvailabilityStatus, isPublicCalendar = false) {
+  return isPublicCalendar && status === "pending" ? "available" : status;
+}
+
 export function getBookingStatusLabel(status: BookingStatus) {
   return status.charAt(0).toUpperCase() + status.slice(1);
 }

@@ -227,7 +227,7 @@ export default function AdminDashboard() {
           <Card><CardContent><span className="admin-stat-label">Requests this month</span><strong>{dashboard?.bookings.length ?? 0}</strong><small>Filtered by check-in month</small></CardContent></Card>
           <Card><CardContent><span className="admin-stat-label">Confirmed revenue</span><strong>{money(filteredConfirmedRevenue)}</strong><small>Selected month</small></CardContent></Card>
           <Card><CardContent><span className="admin-stat-label">Confirmed nights</span><strong>{summary?.confirmedNights ?? 0}</strong><small>All active confirmed nights</small></CardContent></Card>
-          <Card><CardContent><span className="admin-stat-label">Pending</span><strong>{summary?.totals.pending ?? 0}</strong><small>24-hour holds</small></CardContent></Card>
+          <Card><CardContent><span className="admin-stat-label">Pending</span><strong>{summary?.totals.pending ?? 0}</strong><small>Requests awaiting decision</small></CardContent></Card>
         </div>
 
         <div className="admin-status-strip" aria-label="Booking status totals">

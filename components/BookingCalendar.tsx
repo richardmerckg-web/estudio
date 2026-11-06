@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, LoaderCircle } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import {
   addDays,
+  calendarStatus,
   dateIsInRange,
   formatDate,
   getStatusLabel,
@@ -93,6 +94,17 @@ export default function BookingCalendar({
   }, [month, onAvailabilityReady, onAvailabilityState]);
 
   const calendarCells = useMemo(() => buildCalendar(month), [month]);
+  const isPublicCalendar = !readOnly;
+  const selectableAvailability = useMemo(
+    () =>
+      Object.fromEntries(
+        Object.entries(availability).map(([date, status]) => [
+          date,
+          calendarStatus(status, isPublicCalendar),
+        ]),
+      ) as Record<string, AvailabilityStatus>,
+    [availability, isPublicCalendar],
+  );
   const monthLabel = new Intl.DateTimeFormat("en-PH", {
     month: "long",
     year: "numeric",
@@ -100,7 +112,7 @@ export default function BookingCalendar({
   }).format(new Date(`${month}-01T12:00:00Z`));
 
   const handleDayClick = (date: string) => {
-    if (readOnly || date < today || availability[date] !== "available") {
+    if (readOnly || date < today || selectableAvailability[date] !== "available") {
       return;
     }
 
@@ -111,7 +123,7 @@ export default function BookingCalendar({
       return;
     }
 
-    if (!rangeIsAvailable(checkIn, date, availability)) {
+    if (!rangeIsAvailable(checkIn, date, selectableAvailability)) {
       setSelectionError("Every night in the selected stay must be available.");
       return;
     }
@@ -172,7 +184,8 @@ export default function BookingCalendar({
 
       <div className="calendar-grid" role="grid" aria-label={monthLabel}>
         {calendarCells.map(({ date, isCurrentMonth }) => {
-          const status = availability[date];
+          const rawStatus = availability[date];
+          const status = rawStatus ? calendarStatus(rawStatus, isPublicCalendar) : undefined;
           const isPast = date < today;
           const isSelectedStart = date === checkIn;
           const isSelectedEnd = date === checkOut;
@@ -210,7 +223,10 @@ export default function BookingCalendar({
       </div>
 
       <div className="calendar-legend" aria-label="Availability legend">
-        {(["available", "pending", "booked", "blocked"] as AvailabilityStatus[]).map(
+        {(isPublicCalendar
+          ? (["available", "booked", "blocked"] as AvailabilityStatus[])
+          : (["available", "pending", "booked", "blocked"] as AvailabilityStatus[])
+        ).map(
           (status) => (
             <span key={status}>
               <i className={`calendar-legend-dot calendar-legend-dot--${status}`} />

@@ -4,6 +4,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   BOOKING_STATUS_TRANSITIONS,
+  calendarStatus,
   calculateTotal,
   generateNightDates,
   isPendingExpired,
@@ -35,7 +36,13 @@ test("detects an overlapping booked night", () => {
   assert.equal(rangeIsAvailable("2026-06-12", "2026-06-13", availability), true);
 });
 
-test("expires a pending hold at 24 hours", () => {
+test("public calendars treat pending requests as available", () => {
+  assert.equal(calendarStatus("pending", true), "available");
+  assert.equal(calendarStatus("pending", false), "pending");
+  assert.equal(calendarStatus("booked", true), "booked");
+});
+
+test("expires a pending request at 24 hours", () => {
   const createdAt = new Date("2026-06-10T12:00:00.000Z");
   const expiry = new Date(createdAt.getTime() + 24 * 60 * 60 * 1000).toISOString();
   assert.equal(isPendingExpired(expiry, new Date("2026-06-11T11:59:59.000Z")), false);
