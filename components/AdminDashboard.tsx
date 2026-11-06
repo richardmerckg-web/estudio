@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { BedDouble, CalendarDays, ClipboardList, LayoutDashboard, LoaderCircle, LogOut, Plus, RefreshCw, ShieldCheck, SlidersHorizontal } from "lucide-react";
+import { BedDouble, CalendarDays, ClipboardList, Eye, EyeOff, History, LayoutDashboard, LoaderCircle, LogOut, Plus, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import BookingCalendar from "@/components/BookingCalendar";
 import { Badge } from "@/components/ui/badge";
@@ -16,10 +16,13 @@ import {
 } from "@/components/ui/dialog";
 import {
   addDays,
+  formatDate,
   formatDateRange,
+  getStatusLabel,
   getBookingStatusLabel,
   monthKey,
   todayDateString,
+  type AvailabilityStatus,
   type BookingStatus,
 } from "@/lib/booking";
 import {
@@ -30,28 +33,47 @@ import {
 } from "@/lib/booking-api";
 import { supabase } from "@/lib/supabase";
 
-const requestStatusOptions = ["request_all", "pending", "rejected", "cancelled", "expired"];
+const recordsStatusOptions: Array<BookingStatus | "all"> = [
+  "all",
+  "confirmed",
+  "checked_in",
+  "checked_out",
+  "rejected",
+  "cancelled",
+  "expired",
+];
 
-type AdminView = "overview" | "requests" | "front_desk" | "calendar" | "blocked";
+type AdminView = "overview" | "requests" | "front_desk" | "history" | "calendar";
 
 const adminNavItems: Array<{ id: AdminView; label: string; icon: LucideIcon }> = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
   { id: "requests", label: "Requests", icon: ClipboardList },
-  { id: "front_desk", label: "Front desk", icon: BedDouble },
+  { id: "front_desk", label: "Check-in & checkout", icon: BedDouble },
+  { id: "history", label: "Records", icon: History },
   { id: "calendar", label: "Calendar", icon: CalendarDays },
-  { id: "blocked", label: "Blocked dates", icon: SlidersHorizontal },
 ];
 
 const adminViewMeta: Record<AdminView, { title: string; description: string }> = {
   overview: { title: "Booking overview", description: "Current requests, stays, and availability." },
-  requests: { title: "Requests", description: "Pending and closed request outcomes." },
-  front_desk: { title: "Front desk", description: "Check guests in and out." },
-  calendar: { title: "Calendar", description: "Review availability." },
-  blocked: { title: "Blocked dates", description: "Hold dates for owner or maintenance use." },
+  requests: { title: "Requests", description: "Review visitor-submitted bookings." },
+  front_desk: { title: "Check-in & checkout", description: "Manage guest check-ins and checkouts." },
+  history: { title: "Booking records", description: "Review confirmed, active, and closed stays." },
+  calendar: { title: "Calendar", description: "Review availability and manage blocked dates." },
 };
 
 function money(value: number) {
   return `₱${value.toLocaleString("en-PH", { maximumFractionDigits: 0 })}`;
+}
+
+function bookingMessagePreview(message: string | null) {
+  const trimmed = message?.trim() || "";
+  if (trimmed.length <= 72) return trimmed;
+  return `${trimmed.slice(0, 69).trimEnd()}…`;
+}
+
+function bookingMessageLabel(message: string | null) {
+  const preview = bookingMessagePreview(message);
+  return preview ? `Message: ${preview}` : "No message";
 }
 
 export default function AdminDashboard() {
@@ -59,12 +81,14 @@ export default function AdminDashboard() {
   const [authLoading, setAuthLoading] = useState(Boolean(supabase));
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState(supabase ? "" : "Supabase is not configured for this build.");
   const [activeView, setActiveView] = useState<AdminView>("overview");
   const [month, setMonth] = useState(monthKey(todayDateString()));
+  const [recordsMonth, setRecordsMonth] = useState(monthKey(todayDateString()));
   const [status, setStatus] = useState("all");
-  const [frontDeskDate, setFrontDeskDate] = useState(todayDateString());
-  const [frontDeskTab, setFrontDeskTab] = useState<"arrivals" | "in_house">("arrivals");
+  const [recordSearch, setRecordSearch] = useState("");
+  const [frontDeskTab, setFrontDeskTab] = useState<"check_in" | "check_out">("check_in");
   const [dashboard, setDashboard] = useState<AdminResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [dashboardError, setDashboardError] = useState("");
@@ -73,6 +97,7 @@ export default function AdminDashboard() {
   const [actionLoading, setActionLoading] = useState(false);
   const [calendarRefreshKey, setCalendarRefreshKey] = useState(0);
   const [blockedDate, setBlockedDate] = useState("");
+  const [blockedDateStatus, setBlockedDateStatus] = useState<AvailabilityStatus | "">("");
   const [blockedReason, setBlockedReason] = useState("");
   const [blockError, setBlockError] = useState("");
   const [editDates, setEditDates] = useState({ checkIn: "", checkOut: "", guestCount: 1 });
@@ -115,14 +140,15 @@ export default function AdminDashboard() {
     setIsLoading(true);
     setDashboardError("");
     try {
-      const apiStatus = status === "request_all" ? "all" : status;
-      setDashboard(await fetchAdminData({ month: activeView === "front_desk" ? "" : month, status: apiStatus }));
+      const apiStatus = activeView === "requests" ? "pending" : status;
+      const filterMonth = activeView === "front_desk" ? "" : activeView === "history" ? recordsMonth : month;
+      setDashboard(await fetchAdminData({ month: filterMonth, status: apiStatus }));
     } catch (error) {
       setDashboardError(error instanceof Error ? error.message : "Could not load the dashboard.");
     } finally {
       setIsLoading(false);
     }
-  }, [activeView, month, sessionEmail, status]);
+  }, [activeView, month, recordsMonth, sessionEmail, status]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => void loadDashboard(), 0);
@@ -184,17 +210,11 @@ export default function AdminDashboard() {
     }
   };
 
-  const refreshDashboard = async () => {
-    setCalendarRefreshKey((value) => value + 1);
-    await loadDashboard();
-  };
-
   const navigateTo = (view: AdminView, nextStatus?: string) => {
     setActiveView(view);
     setStatus(nextStatus || (view === "requests" ? "pending" : "all"));
     if (view === "front_desk") {
-      setFrontDeskTab("arrivals");
-      setFrontDeskDate(todayDateString());
+      setFrontDeskTab("check_in");
     }
   };
 
@@ -214,6 +234,13 @@ export default function AdminDashboard() {
     setCheckoutError("");
   };
 
+  const selectBlockedDate = (date: string, status: AvailabilityStatus) => {
+    setBlockedDate(date);
+    setBlockedDateStatus(status);
+    setBlockedReason("");
+    setBlockError("");
+  };
+
   const completeCheckout = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!checkoutBooking) return;
@@ -222,6 +249,8 @@ export default function AdminDashboard() {
     try {
       await performAdminAction({ action: "check_out", bookingId: checkoutBooking.id, actualCheckOut: checkoutDate });
       setCheckoutBooking(null);
+      setActiveView("history");
+      setStatus("all");
       setCalendarRefreshKey((value) => value + 1);
       await loadDashboard();
     } catch (error) {
@@ -236,6 +265,10 @@ export default function AdminDashboard() {
       setBlockError("Choose a date first.");
       return;
     }
+    if (shouldBlock && blockedDateStatus === "booked") {
+      setBlockError("Booked nights cannot be blocked.");
+      return;
+    }
     setBlockError("");
     const succeeded = await runAction(
       shouldBlock
@@ -243,7 +276,7 @@ export default function AdminDashboard() {
         : { action: "unblock", date: blockedDate },
     );
     if (succeeded) {
-      setBlockedDate("");
+      setBlockedDateStatus(shouldBlock ? "blocked" : "available");
       setBlockedReason("");
       setBlockError("");
     } else {
@@ -252,7 +285,13 @@ export default function AdminDashboard() {
   };
 
   if (authLoading) {
-    return <main className="admin-page"><p className="admin-loading">Loading admin access…</p></main>;
+    return (
+      <main className="admin-page">
+        <div className="admin-operation-overlay" role="status" aria-live="polite" aria-busy="true">
+          <div className="admin-operation-dialog"><LoaderCircle className="admin-operation-spinner" size={22} aria-hidden="true" /><strong>Loading admin access…</strong><span>Please wait while the admin session is checked.</span></div>
+        </div>
+      </main>
+    );
   }
 
   if (!sessionEmail) {
@@ -260,7 +299,6 @@ export default function AdminDashboard() {
       <main className="admin-page admin-page--login">
         <Card className="admin-login-card">
           <CardHeader>
-            <div className="admin-kicker"><ShieldCheck size={16} aria-hidden="true" /> Admin access</div>
             <CardTitle>Estudio Fresco bookings</CardTitle>
             <p className="admin-muted">Sign in with the Supabase Auth account listed in the admin allowlist.</p>
           </CardHeader>
@@ -272,7 +310,18 @@ export default function AdminDashboard() {
               </label>
               <label>
                 Password
-                <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} required />
+                <span className="admin-password-field">
+                  <input type={showPassword ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} required />
+                  <button
+                    className="admin-password-toggle"
+                    type="button"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    title={showPassword ? "Hide password" : "Show password"}
+                    onClick={() => setShowPassword((visible) => !visible)}
+                  >
+                    {showPassword ? <EyeOff size={17} aria-hidden="true" /> : <Eye size={17} aria-hidden="true" />}
+                  </button>
+                </span>
               </label>
               {authError ? <p className="admin-error" role="alert">{authError}</p> : null}
               <Button type="submit">Sign in</Button>
@@ -285,27 +334,35 @@ export default function AdminDashboard() {
 
   const summary = dashboard?.summary;
   const viewMeta = adminViewMeta[activeView];
-  const today = todayDateString();
   const pendingBookings = dashboard?.bookings.filter((booking) => booking.status === "pending") || [];
-  const requestBookings = dashboard?.bookings.filter((booking) => ["pending", "rejected", "cancelled", "expired"].includes(booking.status)) || [];
+  const requestBookings = dashboard?.bookings.filter((booking) => booking.status === "pending") || [];
   const upcomingBookings = dashboard?.bookings
     .filter((booking) => ["confirmed", "checked_in"].includes(booking.status))
     .slice(0, 5) || [];
   const frontDeskBookings = dashboard?.bookings
     .filter((booking) => ["confirmed", "checked_in"].includes(booking.status))
     .sort((first, second) => first.check_in.localeCompare(second.check_in)) || [];
-  const frontDeskArrivals = frontDeskBookings.filter((booking) => booking.status === "confirmed" && booking.check_in <= frontDeskDate && frontDeskDate < booking.check_out);
-  const frontDeskInHouse = frontDeskBookings.filter((booking) => booking.status === "checked_in" && booking.check_in <= frontDeskDate);
-  const frontDeskDepartures = frontDeskInHouse.filter((booking) => booking.check_out <= frontDeskDate);
-  const upcomingArrivals = frontDeskBookings.filter((booking) => booking.status === "confirmed" && booking.check_in > frontDeskDate).slice(0, 7);
-  const frontDeskList = frontDeskTab === "arrivals" ? frontDeskArrivals : frontDeskInHouse;
-  const canOperateFrontDesk = frontDeskDate === today;
+  const checkInBookings = frontDeskBookings.filter((booking) => booking.status === "confirmed");
+  const checkOutBookings = frontDeskBookings.filter((booking) => booking.status === "checked_in");
+  const roomOccupied = checkOutBookings.length > 0;
+  const frontDeskList = frontDeskTab === "check_in" ? checkInBookings : checkOutBookings;
+  const historyBookings = dashboard?.bookings
+    .filter((booking) => booking.status !== "pending")
+    .slice()
+    .sort((first, second) => second.created_at.localeCompare(first.created_at)) || [];
+  const normalizedRecordSearch = recordSearch.trim().toLowerCase();
+  const filteredHistoryBookings = normalizedRecordSearch
+    ? historyBookings.filter((booking) => [booking.guest_name, booking.booking_reference, booking.guest_email, booking.contact_number, booking.message || ""].some((value) => value.toLowerCase().includes(normalizedRecordSearch)))
+    : historyBookings;
+  const canEditSelectedBooking = Boolean(selectedBooking && ["pending", "confirmed"].includes(selectedBooking.status));
   const operationMessage = checkoutLoading
     ? "Recording checkout…"
     : createLoading
       ? "Creating booking…"
       : actionLoading
         ? "Saving booking changes…"
+        : isLoading
+          ? activeView === "front_desk" ? "Loading check-in and checkout…" : "Loading bookings…"
         : "";
 
   return (
@@ -313,14 +370,12 @@ export default function AdminDashboard() {
       <div className="admin-workspace">
         <aside className="admin-sidebar" aria-label="Admin navigation">
           <div className="admin-sidebar-brand">
-            <div className="admin-brand-mark" aria-hidden="true">EF</div>
             <div>
               <strong>Estudio Fresco</strong>
               <span>Booking admin</span>
             </div>
           </div>
           <nav className="admin-sidebar-nav">
-            <span className="admin-sidebar-label">Workspace</span>
             {adminNavItems.map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
@@ -348,17 +403,26 @@ export default function AdminDashboard() {
         <div className="admin-main">
           <header className="admin-header">
             <div>
-              <p className="admin-kicker"><ShieldCheck size={16} aria-hidden="true" /> Admin workspace</p>
               <h1>{viewMeta.title}</h1>
               <p className="admin-muted">{viewMeta.description}</p>
             </div>
             <div className="admin-header-actions">
-              <Button variant="secondary" onClick={() => void refreshDashboard()} disabled={isLoading}>
-                <RefreshCw size={16} aria-hidden="true" /> {isLoading ? "Refreshing…" : "Refresh"}
-              </Button>
-              <Button onClick={() => { setCreateError(""); setCreateDialogOpen(true); }}>
-                <Plus size={16} aria-hidden="true" /> New booking
-              </Button>
+              {activeView === "history" ? (
+                <div className="admin-header-count-wrap" aria-label={`Total bookings: ${historyBookings.length} in ${recordsMonth ? formatDate(`${recordsMonth}-01`, { month: "long", year: "numeric" }) : "all months"}`} aria-live="polite">
+                  <span className="admin-header-count-label">Total Bookings:</span>
+                  <div className="admin-header-count">
+                    <strong>{historyBookings.length}</strong>
+                  </div>
+                </div>
+              ) : null}
+              {activeView === "requests" ? (
+                <div className="admin-filters admin-header-filter"><label>Check-in month<input type="month" value={month} onChange={(event) => setMonth(event.target.value)} /></label></div>
+              ) : null}
+              {activeView === "front_desk" ? (
+                <Button onClick={() => { setCreateError(""); setCreateDialogOpen(true); }}>
+                  <Plus size={16} aria-hidden="true" /> New booking
+                </Button>
+              ) : null}
             </div>
           </header>
 
@@ -368,15 +432,10 @@ export default function AdminDashboard() {
             <section className="admin-view-section" aria-labelledby="overview-heading">
               <h2 className="sr-only" id="overview-heading">Booking overview summary</h2>
               <div className="admin-summary-grid">
-                <Card><CardContent><span className="admin-stat-label">Requests this month</span><strong>{dashboard?.bookings.length ?? 0}</strong><small>Filtered by check-in month</small></CardContent></Card>
+                <Card><CardContent><span className="admin-stat-label">Bookings this month</span><strong>{dashboard?.bookings.length ?? 0}</strong><small>All statuses by check-in month</small></CardContent></Card>
                 <Card><CardContent><span className="admin-stat-label">Confirmed revenue</span><strong>{money(filteredConfirmedRevenue)}</strong><small>Selected month</small></CardContent></Card>
                 <Card><CardContent><span className="admin-stat-label">Confirmed nights</span><strong>{summary?.confirmedNights ?? 0}</strong><small>Active and completed stays</small></CardContent></Card>
                 <Card><CardContent><span className="admin-stat-label">Pending</span><strong>{summary?.totals.pending ?? 0}</strong><small>Requests awaiting decision</small></CardContent></Card>
-              </div>
-              <div className="admin-status-strip" aria-label="Booking status totals">
-                {(["confirmed", "checked_in", "checked_out", "pending", "rejected", "cancelled", "expired"] as BookingStatus[]).map((item) => (
-                  <span key={item}><Badge variant={item}>{getBookingStatusLabel(item)}</Badge> {summary?.totals[item] ?? 0}</span>
-                ))}
               </div>
               <div className="admin-overview-grid">
                 <Card className="admin-calendar-card">
@@ -392,7 +451,7 @@ export default function AdminDashboard() {
                 </Card>
               </div>
               <Card className="admin-table-card">
-                <CardHeader><div className="admin-card-heading-row"><div><CardTitle>Upcoming stays</CardTitle><p className="admin-muted">Confirmed stays in the selected month.</p></div><Button variant="ghost" onClick={() => navigateTo("front_desk")}>Open front desk</Button></div></CardHeader>
+                <CardHeader><div className="admin-card-heading-row"><div><CardTitle>Upcoming stays</CardTitle><p className="admin-muted">Confirmed stays in the selected month.</p></div><Button variant="ghost" onClick={() => navigateTo("front_desk")}>Open check-in & checkout</Button></div></CardHeader>
                 <CardContent>
                   {upcomingBookings.length ? <div className="admin-upcoming-list">{upcomingBookings.map((booking) => <button key={booking.id} type="button" onClick={() => openBooking(booking)}><span><strong>{booking.guest_name}</strong><small>{formatDateRange(booking.check_in, booking.check_out)} · {booking.booking_reference}</small></span><Badge variant={booking.status}>{getBookingStatusLabel(booking.status)}</Badge></button>)}</div> : <p className="admin-empty">No upcoming confirmed stays in this month.</p>}
                 </CardContent>
@@ -401,13 +460,11 @@ export default function AdminDashboard() {
           ) : null}
 
           {activeView === "requests" ? (
-            <section className="admin-view-section" aria-labelledby="bookings-heading">
-              <div className="admin-section-heading"><div><h2 id="bookings-heading">Booking requests</h2><p className="admin-muted">Review pending requests and closed request outcomes. Confirmed stays are managed at the front desk.</p></div><div className="admin-filters"><label>Check-in month<input type="month" value={month} onChange={(event) => setMonth(event.target.value)} /></label><label>Request status<select value={status} onChange={(event) => setStatus(event.target.value)}>{requestStatusOptions.map((option) => <option key={option} value={option}>{option === "request_all" ? "All request outcomes" : getBookingStatusLabel(option as BookingStatus)}</option>)}</select></label></div></div>
+            <section className="admin-view-section" aria-label="Booking requests">
               <section className="admin-data-panel admin-data-panel--flush" aria-label="Booking request list">
                 <div>
-                  {isLoading ? <p className="admin-loading">Loading bookings…</p> : null}
                   {!isLoading && requestBookings.length === 0 ? <p className="admin-empty">No booking requests match these filters.</p> : null}
-                  {requestBookings.length ? <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Reference</th><th>Dates</th><th>Guest</th><th>Guests</th><th>Total</th><th>Status</th><th><span className="sr-only">Actions</span></th></tr></thead><tbody>{requestBookings.map((booking) => <tr key={booking.id}><td><button className="admin-reference" type="button" onClick={() => openBooking(booking)}>{booking.booking_reference}</button></td><td>{formatDateRange(booking.check_in, booking.check_out)}</td><td>{booking.guest_name}</td><td>{booking.guest_count}</td><td>{money(Number(booking.total_amount))}</td><td><Badge variant={booking.status}>{getBookingStatusLabel(booking.status)}</Badge></td><td><Button variant="ghost" onClick={() => openBooking(booking)}>View</Button></td></tr>)}</tbody></table></div> : null}
+                  {requestBookings.length ? <div className="admin-booking-card-list" aria-label="Booking request cards">{requestBookings.map((booking) => <article className="admin-booking-card" key={booking.id}><div className="admin-booking-card-identity"><strong>{booking.guest_name}</strong><span>{booking.booking_reference}</span><Badge variant={booking.status}>{getBookingStatusLabel(booking.status)}</Badge></div><div className="admin-booking-card-summary"><span>{formatDateRange(booking.check_in, booking.check_out)}</span><span>{booking.guest_count} guest{booking.guest_count === 1 ? "" : "s"}</span><span className={`admin-booking-card-message${booking.message?.trim() ? "" : " admin-booking-card-message--empty"}`} title={booking.message?.trim() || "No message provided"}>{bookingMessageLabel(booking.message)}</span></div><Button variant="secondary" onClick={() => openBooking(booking)}>View details</Button></article>)}</div> : null}
                 </div>
               </section>
             </section>
@@ -415,48 +472,57 @@ export default function AdminDashboard() {
 
           {activeView === "front_desk" ? (
             <section className="admin-view-section" aria-labelledby="front-desk-heading">
-              <h2 className="sr-only" id="front-desk-heading">Front desk operations</h2>
-              <div className="admin-front-desk-summary" aria-label="Front desk counts">
-                <span><strong>{frontDeskArrivals.length}</strong> arrivals</span>
-                <span><strong>{frontDeskInHouse.length}</strong> in-house</span>
-                <span><strong>{frontDeskDepartures.length}</strong> departures due</span>
-              </div>
-              <div className="admin-front-desk-toolbar">
-                <label className="admin-date-control">Operating date<input type="date" value={frontDeskDate} onChange={(event) => setFrontDeskDate(event.target.value)} /></label>
-                <div className="admin-stay-tabs" role="tablist" aria-label="Front desk work queue">
-                  <button type="button" role="tab" aria-selected={frontDeskTab === "arrivals"} className={`admin-stay-tab ${frontDeskTab === "arrivals" ? "admin-stay-tab--active" : ""}`.trim()} onClick={() => setFrontDeskTab("arrivals")}>Arrivals <span>{frontDeskArrivals.length}</span></button>
-                  <button type="button" role="tab" aria-selected={frontDeskTab === "in_house"} className={`admin-stay-tab ${frontDeskTab === "in_house" ? "admin-stay-tab--active" : ""}`.trim()} onClick={() => setFrontDeskTab("in_house")}>In-house & departures <span>{frontDeskInHouse.length}</span></button>
-                </div>
+              <h2 className="sr-only" id="front-desk-heading">Check-in and checkout operations</h2>
+              <div className="admin-stay-tabs admin-front-desk-tabs" role="tablist" aria-label="Check-in and checkout work queue">
+                <button type="button" role="tab" aria-selected={frontDeskTab === "check_in"} className={`admin-stay-tab ${frontDeskTab === "check_in" ? "admin-stay-tab--active" : ""}`.trim()} onClick={() => setFrontDeskTab("check_in")}>Check in <span>{checkInBookings.length}</span></button>
+                <button type="button" role="tab" aria-selected={frontDeskTab === "check_out"} className={`admin-stay-tab ${frontDeskTab === "check_out" ? "admin-stay-tab--active" : ""}`.trim()} onClick={() => setFrontDeskTab("check_out")}>Check out <span>{checkOutBookings.length}</span></button>
               </div>
               <div className="admin-front-desk-layout">
                 <section className="admin-data-panel admin-front-desk-primary-card" aria-labelledby="front-desk-queue-heading">
-                  <div className="admin-data-panel-heading"><div><h2 id="front-desk-queue-heading">{frontDeskTab === "arrivals" ? "Arrivals" : "In-house guests"}</h2><p className="admin-muted">{frontDeskTab === "arrivals" ? "Check in guests arriving on the operating date." : "Check out current guests and release unused nights when they leave early."}</p></div><Badge variant={frontDeskTab === "arrivals" ? "confirmed" : "checked_in"}>{frontDeskDate === today ? "Today" : frontDeskDate}</Badge></div>
+                  <div className="admin-data-panel-heading"><div><h2 id="front-desk-queue-heading">{frontDeskTab === "check_in" ? "Confirmed guests" : "Guest currently checked in"}</h2><p className="admin-muted">{frontDeskTab === "check_in" ? "All confirmed bookings and admin-added stays available for check-in." : "The room is occupied until this guest is checked out."}</p></div></div>
+                  {frontDeskTab === "check_in" && roomOccupied ? <div className="admin-room-occupied" role="status"><strong>Room occupied</strong><span>Check out the current guest before checking in another stay.</span><button type="button" onClick={() => setFrontDeskTab("check_out")}>Open check out</button></div> : null}
                   <div>
-                    {frontDeskList.length ? <div className="admin-guest-list">{frontDeskList.map((booking) => <article className="admin-guest-card" key={booking.id}><div className="admin-guest-card-main"><div className="admin-guest-card-heading"><strong>{booking.guest_name}</strong><Badge variant={booking.status}>{getBookingStatusLabel(booking.status)}</Badge></div><div className="admin-guest-card-meta"><span>{booking.booking_reference}</span><span>{formatDateRange(booking.check_in, booking.check_out)}</span><span>{booking.guest_count} guest{booking.guest_count === 1 ? "" : "s"}</span></div><div className="admin-guest-card-contact"><a href={`mailto:${booking.guest_email}`}>{booking.guest_email}</a><a href={`tel:${booking.contact_number}`}>{booking.contact_number}</a></div></div><div className="admin-guest-card-actions"><Button variant="ghost" onClick={() => openBooking(booking)}>View details</Button>{frontDeskTab === "arrivals" && canOperateFrontDesk ? <Button variant="secondary" onClick={() => void runAction({ action: "check_in", bookingId: booking.id })}>Check in</Button> : null}{frontDeskTab === "in_house" && canOperateFrontDesk ? <Button onClick={() => openCheckout(booking)}>Check out</Button> : null}{!canOperateFrontDesk ? <small>Actions available on today’s date</small> : null}</div></article>)}</div> : <p className="admin-empty">{frontDeskTab === "arrivals" ? `No confirmed arrivals on ${frontDeskDate}.` : `No checked-in guests staying on ${frontDeskDate}.`}</p>}
+                    {frontDeskList.length ? <div className="admin-guest-list">{frontDeskList.map((booking) => <article className="admin-guest-card" key={booking.id}><div className="admin-guest-card-identity"><strong>{booking.guest_name}</strong><span>{booking.booking_reference}</span></div><div className="admin-guest-card-summary"><span>{formatDateRange(booking.check_in, booking.check_out)}</span><span>{booking.guest_count} guest{booking.guest_count === 1 ? "" : "s"}</span><span className={`admin-booking-card-message${booking.message?.trim() ? "" : " admin-booking-card-message--empty"}`} title={booking.message?.trim() || "No message provided"}>{bookingMessageLabel(booking.message)}</span></div><div className="admin-guest-card-actions"><Button variant="ghost" onClick={() => openBooking(booking)}>View details</Button>{frontDeskTab === "check_in" ? <Button variant="secondary" disabled={roomOccupied} onClick={async () => { const succeeded = await runAction({ action: "check_in", bookingId: booking.id }); if (succeeded) setFrontDeskTab("check_out"); }}>{roomOccupied ? "Room occupied" : "Check in"}</Button> : <Button onClick={() => void openCheckout(booking)}>Check out</Button>}</div></article>)}</div> : <p className="admin-empty">{frontDeskTab === "check_in" ? "No confirmed bookings found." : "No guest is currently checked in."}</p>}
                   </div>
                 </section>
-                <aside className="admin-data-panel admin-front-desk-upcoming-card" aria-labelledby="upcoming-arrivals-heading">
-                  <div className="admin-data-panel-heading"><div><h2 id="upcoming-arrivals-heading">Upcoming arrivals</h2><p className="admin-muted">After the operating date.</p></div></div>
-                  <div>{upcomingArrivals.length ? <div className="admin-upcoming-list admin-upcoming-list--compact">{upcomingArrivals.map((booking) => <button key={booking.id} type="button" onClick={() => openBooking(booking)}><span><strong>{booking.guest_name}</strong><small>{booking.check_in} · {booking.booking_reference}</small></span><span className="admin-upcoming-list-date">View details</span></button>)}</div> : <p className="admin-empty">No upcoming arrivals found.</p>}</div>
-                </aside>
               </div>
-              <div className="admin-front-desk-note"><BedDouble size={18} aria-hidden="true" /><div><strong>Checkout rule</strong><p>Normal checkout keeps the original stay history. An earlier actual checkout date releases the unused nights and makes them available again.</p></div></div>
+            </section>
+          ) : null}
+
+          {activeView === "history" ? (
+            <section className="admin-view-section" aria-label="Booking history">
+              <div className="admin-record-toolbar">
+                <div className="admin-filters admin-record-search"><label>Search records<div className="admin-record-search-control"><input type="search" value={recordSearch} onChange={(event) => setRecordSearch(event.target.value)} placeholder="Guest, reference, email, or phone" autoComplete="off" />{recordSearch ? <button type="button" className="admin-record-search-clear" aria-label="Clear search" title="Clear search" onClick={() => setRecordSearch("")}><X size={12} strokeWidth={1.6} aria-hidden="true" /></button> : null}</div></label></div>
+                <div className="admin-filters admin-record-filter-controls"><label>Check-in month<div className="admin-month-picker"><input type="month" value={recordsMonth} onChange={(event) => setRecordsMonth(event.target.value)} aria-label="Select check-in month" /><button type="button" className="admin-month-picker-toggle" onClick={() => setRecordsMonth(recordsMonth ? "" : monthKey(todayDateString()))}>{recordsMonth ? "All months" : "Current month"}</button></div></label><label>Booking status<select value={status} onChange={(event) => setStatus(event.target.value)}>{recordsStatusOptions.map((option) => <option key={option} value={option}>{option === "all" ? "All statuses" : getBookingStatusLabel(option)}</option>)}</select></label></div>
+              </div>
+              <section className="admin-data-panel admin-data-panel--flush" aria-label="Booking history cards">
+                <div>
+                  {filteredHistoryBookings.length ? <div className="admin-booking-card-list">{filteredHistoryBookings.map((booking) => <article className="admin-booking-card" key={booking.id}><div className="admin-booking-card-identity"><strong>{booking.guest_name}</strong><span>{booking.booking_reference}</span><Badge variant={booking.status}>{getBookingStatusLabel(booking.status)}</Badge></div><div className="admin-booking-card-summary"><span>{formatDateRange(booking.check_in, booking.check_out)}</span><span>{booking.guest_count} guest{booking.guest_count === 1 ? "" : "s"}</span></div><Button variant="secondary" onClick={() => openBooking(booking)}>View details</Button></article>)}</div> : <p className="admin-empty">{normalizedRecordSearch ? "No booking records match your search." : "No booking records found."}</p>}
+                </div>
+              </section>
             </section>
           ) : null}
 
           {activeView === "calendar" ? (
             <section className="admin-view-section" aria-label="Availability calendar content">
-              <div className="admin-calendar-section"><BookingCalendar checkIn="" checkOut="" onRangeChange={() => undefined} readOnly refreshKey={calendarRefreshKey} /></div>
-            </section>
-          ) : null}
-
-          {activeView === "blocked" ? (
-            <section className="admin-view-section admin-blocked-view" aria-labelledby="blocked-heading">
-              <section className="admin-data-panel admin-block-panel">
-                <div className="admin-data-panel-heading"><div><h2 id="blocked-heading">Block a date</h2><p className="admin-muted">Hold dates for owner stays, maintenance, or other unavailable periods.</p></div></div>
-                <div className="admin-block-form"><label>Date<input type="date" value={blockedDate} min={todayDateString()} onChange={(event) => setBlockedDate(event.target.value)} /></label><label>Reason<input type="text" value={blockedReason} maxLength={240} onChange={(event) => setBlockedReason(event.target.value)} placeholder="Optional note" /></label>{blockError ? <p className="admin-error" role="alert">{blockError}</p> : null}<div className="admin-inline-actions"><Button onClick={() => void blockDate(true)}>Block date</Button><Button variant="secondary" onClick={() => void blockDate(false)}>Unblock</Button></div></div>
-              </section>
-              <div className="admin-info-panel"><CalendarDays size={18} aria-hidden="true" /><div><strong>How blocked dates work</strong><p>Blocked nights are unavailable to visitors and cannot be used by new manual bookings.</p></div></div>
+              <div className="admin-content-grid">
+                <div className="admin-calendar-section"><BookingCalendar checkIn="" checkOut="" onRangeChange={() => undefined} onDateSelect={selectBlockedDate} selectedDate={blockedDate} selectionLabel={blockedDate ? `${formatDate(blockedDate, { month: "short", day: "numeric" })} selected` : "Select a future date to manage"} title="Manage blocked dates" readOnly refreshKey={calendarRefreshKey} /></div>
+                <div className="admin-calendar-side">
+                  <section className="admin-data-panel admin-block-panel" aria-labelledby="blocked-heading">
+                    <div className="admin-data-panel-heading"><div><h2 id="blocked-heading">Manage blocked dates</h2><p className="admin-muted">Select a future date on the calendar to block or unblock it.</p></div></div>
+                    <div className="admin-block-form">
+                      <div className="admin-block-selection" role="status" aria-live="polite">
+                        <div><span>Selected date</span><strong>{blockedDate ? formatDate(blockedDate, { month: "long", day: "numeric", year: "numeric" }) : "None"}</strong></div>
+                        <div><span>Status</span><strong>{blockedDateStatus ? getStatusLabel(blockedDateStatus) : blockedDate ? "Select it on the calendar to verify" : "Not selected"}</strong></div>
+                      </div>
+                      <label>Date<input type="date" value={blockedDate} min={todayDateString()} onChange={(event) => { setBlockedDate(event.target.value); setBlockedDateStatus(""); setBlockError(""); }} /></label>
+                      {blockedDateStatus !== "blocked" ? <label>Reason<input type="text" value={blockedReason} maxLength={240} onChange={(event) => setBlockedReason(event.target.value)} placeholder="Optional note" /></label> : null}
+                      {blockError ? <p className="admin-error" role="alert">{blockError}</p> : null}
+                      <div className="admin-inline-actions"><Button disabled={!blockedDate || blockedDateStatus === "booked"} onClick={() => void blockDate(true)}>Block selected date</Button>{blockedDateStatus === "blocked" ? <Button variant="secondary" onClick={() => void blockDate(false)}>Unblock selected date</Button> : null}</div>
+                    </div>
+                  </section>
+                </div>
+              </div>
             </section>
           ) : null}
         </div>
@@ -469,41 +535,47 @@ export default function AdminDashboard() {
       ) : null}
 
       <Dialog open={Boolean(selectedBooking)} onOpenChange={(open) => !open && setSelectedBooking(null)}>
-        <DialogContent className="ui-dialog-content">
+        <DialogContent className="ui-dialog-content admin-modal admin-booking-details-modal">
           {selectedBooking ? (
             <>
-              <DialogTitle>{selectedBooking.booking_reference}</DialogTitle>
-              <DialogDescription>Booking details and administrative actions.</DialogDescription>
-              <div className="booking-detail-grid">
-                <div><span>Visitor</span><strong>{selectedBooking.guest_name}</strong></div>
-                <div><span>Guests</span><strong>{selectedBooking.guest_count}</strong></div>
-                <div><span>Email</span><a href={`mailto:${selectedBooking.guest_email}`}>{selectedBooking.guest_email}</a></div>
-                <div><span>Phone</span><a href={`tel:${selectedBooking.contact_number}`}>{selectedBooking.contact_number}</a></div>
-                <div><span>Dates</span><strong>{formatDateRange(selectedBooking.check_in, selectedBooking.check_out)}</strong></div>
-                <div><span>Total</span><strong>{money(Number(selectedBooking.total_amount))}</strong></div>
-              </div>
-              {selectedBooking.message ? <p className="booking-detail-message">{selectedBooking.message}</p> : null}
-              {selectedBooking.audit_log?.length ? (
-                <div className="admin-audit-log">
-                  <h3>Activity</h3>
-                  <ol>
-                    {selectedBooking.audit_log.map((entry) => (
-                      <li key={entry.id}>
-                        <strong>{entry.action.replaceAll("_", " ")}</strong>
-                        <span>{new Date(entry.created_at).toLocaleString("en-PH")}</span>
-                      </li>
-                    ))}
-                  </ol>
+              <div className="admin-modal-header">
+                <div>
+                  <p className="admin-modal-kicker">Booking details</p>
+                  <DialogTitle>{selectedBooking.booking_reference}</DialogTitle>
+                  <DialogDescription>Guest, stay, and available actions.</DialogDescription>
                 </div>
-              ) : null}
-              <div className="admin-edit-fields">
-                <label>Check-in<input type="date" min={todayDateString()} value={editDates.checkIn} onChange={(event) => setEditDates((current) => ({ ...current, checkIn: event.target.value }))} /></label>
-                <label>Check-out<input type="date" min={editDates.checkIn ? addDays(editDates.checkIn, 1) : addDays(todayDateString(), 1)} value={editDates.checkOut} onChange={(event) => setEditDates((current) => ({ ...current, checkOut: event.target.value }))} /></label>
-                <label>Guests<select value={editDates.guestCount} onChange={(event) => setEditDates((current) => ({ ...current, guestCount: Number(event.target.value) }))}>{[1, 2, 3, 4].map((count) => <option key={count} value={count}>{count}</option>)}</select></label>
+                <Badge variant={selectedBooking.status}>{getBookingStatusLabel(selectedBooking.status)}</Badge>
               </div>
+              <section className="admin-modal-section" aria-labelledby="guest-information-heading">
+                <div className="admin-modal-section-heading"><h3 id="guest-information-heading">Guest information</h3></div>
+                <div className="admin-detail-grid">
+                  <div className="admin-detail-item"><span>Guest</span><strong>{selectedBooking.guest_name}</strong></div>
+                  <div className="admin-detail-item"><span>Guests</span><strong>{selectedBooking.guest_count}</strong></div>
+                  <div className="admin-detail-item"><span>Email</span><a href={`mailto:${selectedBooking.guest_email}`}>{selectedBooking.guest_email}</a></div>
+                  <div className="admin-detail-item"><span>Phone</span><a href={`tel:${selectedBooking.contact_number}`}>{selectedBooking.contact_number}</a></div>
+                </div>
+              </section>
+              <section className="admin-modal-section" aria-labelledby="stay-summary-heading">
+                <div className="admin-modal-section-heading"><h3 id="stay-summary-heading">Stay summary</h3></div>
+                <div className="admin-detail-grid">
+                  <div className="admin-detail-item"><span>Dates</span><strong>{formatDateRange(selectedBooking.check_in, selectedBooking.check_out)}</strong></div>
+                  <div className="admin-detail-item"><span>Total</span><strong>{money(Number(selectedBooking.total_amount))}</strong></div>
+                </div>
+              </section>
+              <section className="admin-modal-section admin-message-section" aria-labelledby="guest-message-heading"><div className="admin-modal-section-heading"><h3 id="guest-message-heading">Guest message</h3></div>{selectedBooking.message?.trim() ? <p>{selectedBooking.message}</p> : <p className="admin-message-empty">No message provided.</p>}</section>
+              {canEditSelectedBooking ? (
+                <section className="admin-modal-section admin-edit-section" aria-labelledby="edit-booking-heading">
+                  <div className="admin-modal-section-heading"><div><h3 id="edit-booking-heading">Edit booking</h3><p>Adjust the stay details while the booking is pending or confirmed.</p></div></div>
+                  <div className="admin-edit-fields">
+                    <label>Check-in<input disabled={actionLoading} type="date" min={todayDateString()} value={editDates.checkIn} onChange={(event) => setEditDates((current) => ({ ...current, checkIn: event.target.value }))} /></label>
+                    <label>Check-out<input disabled={actionLoading} type="date" min={editDates.checkIn ? addDays(editDates.checkIn, 1) : addDays(todayDateString(), 1)} value={editDates.checkOut} onChange={(event) => setEditDates((current) => ({ ...current, checkOut: event.target.value }))} /></label>
+                    <label>Guests<select disabled={actionLoading} value={editDates.guestCount} onChange={(event) => setEditDates((current) => ({ ...current, guestCount: Number(event.target.value) }))}>{[1, 2, 3, 4].map((count) => <option key={count} value={count}>{count}</option>)}</select></label>
+                  </div>
+                </section>
+              ) : null}
               {actionError ? <p className="admin-error" role="alert">{actionError}</p> : null}
-              <div className="admin-dialog-actions">
-                <Button variant="secondary" disabled={actionLoading || !["pending", "confirmed"].includes(selectedBooking.status)} onClick={() => void runAction({ action: "edit", bookingId: selectedBooking.id, ...editDates })}>Save edit</Button>
+              <div className="admin-dialog-actions admin-modal-actions">
+                {canEditSelectedBooking ? <Button variant="secondary" disabled={actionLoading} onClick={() => void runAction({ action: "edit", bookingId: selectedBooking.id, ...editDates })}>Save edit</Button> : null}
                 {selectedBooking.status === "pending" ? <Button disabled={actionLoading} onClick={() => void runAction({ action: "confirm", bookingId: selectedBooking.id })}>Confirm</Button> : null}
                 {selectedBooking.status === "pending" ? <Button variant="danger" disabled={actionLoading} onClick={() => void runAction({ action: "reject", bookingId: selectedBooking.id })}>Reject</Button> : null}
                 {selectedBooking.status === "confirmed" ? <Button disabled={actionLoading} onClick={() => void runAction({ action: "check_in", bookingId: selectedBooking.id })}>Check in</Button> : null}
@@ -518,19 +590,29 @@ export default function AdminDashboard() {
       </Dialog>
 
       <Dialog open={Boolean(checkoutBooking)} onOpenChange={(open) => !open && setCheckoutBooking(null)}>
-        <DialogContent className="ui-dialog-content">
+        <DialogContent className="ui-dialog-content admin-modal admin-checkout-modal">
           {checkoutBooking ? (
             <>
-              <DialogTitle>Check out {checkoutBooking.guest_name}</DialogTitle>
-              <DialogDescription>Use the scheduled date for a normal checkout, or select an earlier date to release unused nights.</DialogDescription>
-              <form className="admin-checkout-form" onSubmit={completeCheckout}>
-                <div className="booking-detail-grid">
-                  <div><span>Reference</span><strong>{checkoutBooking.booking_reference}</strong></div>
-                  <div><span>Scheduled checkout</span><strong>{checkoutBooking.check_out}</strong></div>
+              <div className="admin-modal-header">
+                <div>
+                  <p className="admin-modal-kicker">Guest checkout</p>
+                  <DialogTitle>Check out {checkoutBooking.guest_name}</DialogTitle>
+                  <DialogDescription>Use the scheduled date, or choose an earlier date to release unused nights.</DialogDescription>
                 </div>
-                <label>Actual checkout date<input required type="date" min={addDays(checkoutBooking.check_in, 1)} max={checkoutBooking.check_out} value={checkoutDate} onChange={(event) => setCheckoutDate(event.target.value)} /></label>
+              </div>
+              <form className="admin-checkout-form" onSubmit={completeCheckout}>
+                <section className="admin-modal-section" aria-labelledby="checkout-summary-heading">
+                  <div className="admin-modal-section-heading"><h3 id="checkout-summary-heading">Stay summary</h3></div>
+                  <div className="admin-detail-grid">
+                  <div className="admin-detail-item"><span>Reference</span><strong>{checkoutBooking.booking_reference}</strong></div>
+                  <div className="admin-detail-item"><span>Scheduled checkout</span><strong>{checkoutBooking.check_out}</strong></div>
+                  </div>
+                </section>
+                <div className="admin-form-field">
+                  <label>Actual checkout date<input required type="date" min={addDays(checkoutBooking.check_in, 1)} max={checkoutBooking.check_out} value={checkoutDate} onChange={(event) => setCheckoutDate(event.target.value)} /></label>
+                </div>
                 {checkoutError ? <p className="admin-error" role="alert">{checkoutError}</p> : null}
-                <div className="admin-dialog-actions">
+                <div className="admin-dialog-actions admin-modal-actions">
                   <DialogClose asChild><Button type="button" variant="ghost">Cancel</Button></DialogClose>
                   <Button type="submit" disabled={checkoutLoading}>{checkoutLoading ? "Saving…" : "Confirm checkout"}</Button>
                 </div>
@@ -541,21 +623,34 @@ export default function AdminDashboard() {
       </Dialog>
 
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-        <DialogContent className="ui-dialog-content">
-          <DialogTitle>New confirmed booking</DialogTitle>
-          <DialogDescription>Create a direct booking for a phone, walk-in, or moved guest. This reserves the selected nights immediately.</DialogDescription>
-          <form className="admin-create-form" onSubmit={createBooking}>
-            <div className="admin-create-grid">
-              <label>Full name<input required minLength={2} value={createForm.guestName} onChange={(event) => setCreateForm((current) => ({ ...current, guestName: event.target.value }))} /></label>
-              <label>Email<input required type="email" value={createForm.guestEmail} onChange={(event) => setCreateForm((current) => ({ ...current, guestEmail: event.target.value }))} /></label>
-              <label>Contact number<input required type="tel" value={createForm.contactNumber} onChange={(event) => setCreateForm((current) => ({ ...current, contactNumber: event.target.value }))} /></label>
-              <label>Guests<select value={createForm.guestCount} onChange={(event) => setCreateForm((current) => ({ ...current, guestCount: Number(event.target.value) }))}>{[1, 2, 3, 4].map((count) => <option key={count} value={count}>{count}</option>)}</select></label>
-              <label>Check-in<input required type="date" min={todayDateString()} value={createForm.checkIn} onChange={(event) => setCreateForm((current) => ({ ...current, checkIn: event.target.value }))} /></label>
-              <label>Check-out<input required type="date" min={createForm.checkIn ? addDays(createForm.checkIn, 1) : addDays(todayDateString(), 1)} value={createForm.checkOut} onChange={(event) => setCreateForm((current) => ({ ...current, checkOut: event.target.value }))} /></label>
+        <DialogContent className="ui-dialog-content admin-modal admin-create-modal">
+          <div className="admin-modal-header">
+            <div>
+              <p className="admin-modal-kicker">Manual booking</p>
+              <DialogTitle>New confirmed booking</DialogTitle>
+              <DialogDescription>Create a confirmed booking for a phone, walk-in, or moved guest.</DialogDescription>
             </div>
-            <label>Message<textarea rows={3} value={createForm.message} onChange={(event) => setCreateForm((current) => ({ ...current, message: event.target.value }))} /></label>
+          </div>
+          <form className="admin-create-form" onSubmit={createBooking}>
+            <section className="admin-modal-section" aria-labelledby="manual-guest-heading">
+              <div className="admin-modal-section-heading"><h3 id="manual-guest-heading">Guest information</h3></div>
+              <div className="admin-create-grid">
+                <label>Full name<input required minLength={2} value={createForm.guestName} onChange={(event) => setCreateForm((current) => ({ ...current, guestName: event.target.value }))} /></label>
+                <label>Email<input required type="email" value={createForm.guestEmail} onChange={(event) => setCreateForm((current) => ({ ...current, guestEmail: event.target.value }))} /></label>
+                <label>Contact number<input required type="tel" value={createForm.contactNumber} onChange={(event) => setCreateForm((current) => ({ ...current, contactNumber: event.target.value }))} /></label>
+                <label>Guests<select value={createForm.guestCount} onChange={(event) => setCreateForm((current) => ({ ...current, guestCount: Number(event.target.value) }))}>{[1, 2, 3, 4].map((count) => <option key={count} value={count}>{count}</option>)}</select></label>
+              </div>
+            </section>
+            <section className="admin-modal-section" aria-labelledby="manual-stay-heading">
+              <div className="admin-modal-section-heading"><h3 id="manual-stay-heading">Stay dates</h3></div>
+              <div className="admin-create-grid">
+                <label>Check-in<input required type="date" min={todayDateString()} value={createForm.checkIn} onChange={(event) => setCreateForm((current) => ({ ...current, checkIn: event.target.value }))} /></label>
+                <label>Check-out<input required type="date" min={createForm.checkIn ? addDays(createForm.checkIn, 1) : addDays(todayDateString(), 1)} value={createForm.checkOut} onChange={(event) => setCreateForm((current) => ({ ...current, checkOut: event.target.value }))} /></label>
+              </div>
+            </section>
+            <div className="admin-form-field"><label>Message<textarea rows={3} value={createForm.message} onChange={(event) => setCreateForm((current) => ({ ...current, message: event.target.value }))} /></label></div>
             {createError ? <p className="admin-error" role="alert">{createError}</p> : null}
-            <div className="admin-dialog-actions">
+            <div className="admin-dialog-actions admin-modal-actions">
               <DialogClose asChild><Button type="button" variant="ghost">Cancel</Button></DialogClose>
               <Button type="submit" disabled={createLoading}>{createLoading ? "Creating…" : "Create booking"}</Button>
             </div>

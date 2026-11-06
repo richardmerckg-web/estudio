@@ -2,6 +2,7 @@ import Image from "next/image";
 import BookingForm from "@/components/BookingForm";
 import SiteHeader from "@/components/SiteHeader";
 import ImageGallery from "@/components/ImageGallery";
+import StructuredData from "@/components/StructuredData";
 
 const inclusions = [
   {
@@ -125,6 +126,7 @@ const galleryImages = [
 export default function Home() {
   return (
     <main className="site-shell">
+      <StructuredData />
       <SiteHeader />
 
       <section className="hero" id="top" aria-labelledby="hero-heading">

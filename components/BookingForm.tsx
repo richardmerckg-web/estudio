@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import BookingCalendar from "@/components/BookingCalendar";
 import { createBooking, type CreateBookingResponse } from "@/lib/booking-api";
-import { calculateTotal, formatDateRange, type DateRange } from "@/lib/booking";
+import { calculateTotal, formatDate, formatDateRange, type DateRange } from "@/lib/booking";
 
 const FORM_ENDPOINT = "https://formspree.io/f/mnpnnkbd";
 
@@ -16,6 +16,10 @@ function isUnavailableError(error: unknown) {
   return status === undefined || status >= 500;
 }
 
+function dateStepValue(date: string) {
+  return date ? formatDate(date, { month: "short", day: "numeric", year: "numeric" }) : "Select a date";
+}
+
 export default function BookingForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState<SuccessState | null>(null);
@@ -26,6 +30,11 @@ export default function BookingForm() {
   const [fallbackDates, setFallbackDates] = useState("");
   const [estimatedTotal, setEstimatedTotal] = useState(0);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const dateSelectionInstruction = dateRange.checkIn && dateRange.checkOut
+    ? "Dates selected. Review your stay before sending."
+    : dateRange.checkIn
+      ? "Check-in selected. Now select your check-out date."
+      : "Select your check-in date first.";
 
   useEffect(() => {
     if (!success) {
@@ -192,12 +201,38 @@ export default function BookingForm() {
             </select>
           </div>
           <div className="form-field form-field--full booking-calendar-field">
-            <span className="form-field-label">Preferred dates</span>
+            <span className="form-field-label">Stay dates</span>
+            <div className="booking-date-guidance">
+              <p className="booking-date-instruction">Select your check-in date first, then select your check-out date.</p>
+              <div className="booking-date-steps" role="group" aria-label="Stay date selection steps">
+                <div
+                  className={`booking-date-step ${dateRange.checkIn ? "booking-date-step--complete" : "booking-date-step--active"}`}
+                  aria-current={!dateRange.checkIn ? "step" : undefined}
+                >
+                  <span className="booking-date-step-index" aria-hidden="true">1</span>
+                  <span className="booking-date-step-copy">
+                    <span>Check-in</span>
+                    <strong>{dateStepValue(dateRange.checkIn)}</strong>
+                  </span>
+                </div>
+                <div
+                  className={`booking-date-step ${dateRange.checkOut ? "booking-date-step--complete" : dateRange.checkIn ? "booking-date-step--active" : ""}`}
+                  aria-current={dateRange.checkIn && !dateRange.checkOut ? "step" : undefined}
+                >
+                  <span className="booking-date-step-index" aria-hidden="true">2</span>
+                  <span className="booking-date-step-copy">
+                    <span>Check-out</span>
+                    <strong>{dateStepValue(dateRange.checkOut)}</strong>
+                  </span>
+                </div>
+              </div>
+            </div>
             <BookingCalendar
               checkIn={dateRange.checkIn}
               checkOut={dateRange.checkOut}
               onRangeChange={handleRangeChange}
               onAvailabilityState={handleAvailabilityState}
+              selectionLabel={dateSelectionInstruction}
               refreshKey={calendarRefreshKey}
             />
             {availabilityState === "unavailable" ? (

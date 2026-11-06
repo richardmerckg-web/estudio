@@ -69,7 +69,7 @@ test("allows only the intended booking status transitions", () => {
 
 test("migration enforces RLS and admin-only database access assumptions", () => {
   const migration = readFileSync(
-    join(process.cwd(), "supabase", "migrations", "20261106064408_booking_system.sql"),
+    join(process.cwd(), "supabase", "migrations", "20261106070538_booking_system.sql"),
     "utf8",
   );
   for (const table of ["admin_users", "bookings", "booking_nights", "blocked_dates"]) {

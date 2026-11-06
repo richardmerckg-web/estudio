@@ -23,7 +23,10 @@ type BookingCalendarProps = {
   onRangeChange: (checkIn: string, checkOut: string) => void;
   onAvailabilityReady?: (ready: boolean) => void;
   onAvailabilityState?: (state: "loading" | "ready" | "unavailable") => void;
+  onDateSelect?: (date: string, status: AvailabilityStatus) => void;
   readOnly?: boolean;
+  selectedDate?: string;
+  selectionLabel?: string;
   title?: string;
   refreshKey?: number;
 };
@@ -53,7 +56,10 @@ export default function BookingCalendar({
   onRangeChange,
   onAvailabilityReady,
   onAvailabilityState,
+  onDateSelect,
   readOnly = false,
+  selectedDate = "",
+  selectionLabel,
   title = "Choose your dates",
   refreshKey = 0,
 }: BookingCalendarProps) {
@@ -97,6 +103,7 @@ export default function BookingCalendar({
 
   const calendarCells = useMemo(() => buildCalendar(month), [month]);
   const isPublicCalendar = !readOnly;
+  const isAdminDateSelector = readOnly && Boolean(onDateSelect);
   const selectableAvailability = useMemo(
     () =>
       Object.fromEntries(
@@ -139,13 +146,13 @@ export default function BookingCalendar({
         <div>
           <p className="calendar-title">{title}</p>
           <p className="calendar-selection" aria-live="polite">
-            {checkIn && checkOut
+            {selectionLabel || (checkIn && checkOut
               ? `${formatDate(checkIn, { month: "short" })} – ${formatDate(checkOut, {
                   month: "short",
                 })}`
               : checkIn
                 ? `${formatDate(checkIn, { month: "short" })} selected · choose check-out`
-                : "Check-in included · check-out excluded"}
+                : "Check-in included · check-out excluded")}
           </p>
         </div>
         <div className="calendar-navigation" aria-label="Calendar navigation">
@@ -192,8 +199,12 @@ export default function BookingCalendar({
           const isSelectedStart = date === checkIn;
           const isSelectedEnd = date === checkOut;
           const isSelectedNight = dateIsInRange(date, { checkIn, checkOut });
-          const isDisabled =
-            readOnly || isPast || status !== "available" || !isCurrentMonth;
+          const isAdminSelected = isAdminDateSelector && date === selectedDate;
+          const canSelectAdminDate =
+            isAdminDateSelector && !isPast && isCurrentMonth && Boolean(status) && status !== "booked";
+          const isDisabled = isAdminDateSelector
+            ? !canSelectAdminDate
+            : readOnly || isPast || status !== "available" || !isCurrentMonth;
           const classNames = [
             "calendar-day",
             !isCurrentMonth ? "calendar-day--outside" : "",
@@ -202,6 +213,7 @@ export default function BookingCalendar({
             isSelectedStart ? "calendar-day--selected-start" : "",
             isSelectedEnd ? "calendar-day--selected-end" : "",
             isSelectedNight ? "calendar-day--selected-night" : "",
+            isAdminSelected ? "calendar-day--admin-selected" : "",
           ]
             .filter(Boolean)
             .join(" ");
@@ -213,9 +225,16 @@ export default function BookingCalendar({
               type="button"
               role="gridcell"
               disabled={isDisabled}
+              data-admin-selectable={isAdminDateSelector ? "true" : undefined}
               aria-label={`${formatDate(date)}${status ? `, ${getStatusLabel(status)}` : ", availability unverified"}`}
-              aria-selected={isSelectedStart || isSelectedEnd || isSelectedNight}
-              onClick={() => handleDayClick(date)}
+              aria-selected={isSelectedStart || isSelectedEnd || isSelectedNight || isAdminSelected}
+              onClick={() => {
+                if (isAdminDateSelector) {
+                  if (status) onDateSelect?.(date, status);
+                  return;
+                }
+                handleDayClick(date);
+              }}
             >
               <span>{Number(date.slice(-2))}</span>
               {isCurrentMonth && status ? <small>{status}</small> : null}
