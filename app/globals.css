@@ -3454,24 +3454,13 @@ em {
   min-width: 0;
 }
 
-.admin-nav-button strong,
-.admin-nav-button small {
+.admin-nav-button strong {
   display: block;
 }
 
 .admin-nav-button strong {
   font-size: 0.8rem;
   font-weight: 650;
-}
-
-.admin-nav-button small {
-  margin-top: 0.18rem;
-  color: #8a948c;
-  font-size: 0.66rem;
-}
-
-.admin-nav-button--active small {
-  color: #68726a;
 }
 
 .admin-sidebar-footer {
@@ -3563,10 +3552,6 @@ em {
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr);
   gap: 0.8rem;
-}
-
-.admin-calendar-card--full .booking-calendar {
-  min-height: 460px;
 }
 
 .admin-card-heading-row .admin-muted {
@@ -3716,10 +3701,6 @@ em {
     padding: 0.5rem 0.7rem;
   }
 
-  .admin-nav-button small {
-    display: none;
-  }
-
   .admin-nav-button strong {
     font-size: 0.75rem;
   }
@@ -3761,14 +3742,60 @@ em {
     min-width: 0;
   }
 
-  .admin-calendar-card--full .booking-calendar {
-    min-height: 0;
-  }
 }
 
 /* Front desk operations */
-.admin-summary-grid--three {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+.admin-data-panel {
+  border-top: 1px solid #dfe4de;
+  border-bottom: 1px solid #dfe4de;
+  background: transparent;
+}
+
+.admin-data-panel > div {
+  padding: 1.05rem 0;
+}
+
+.admin-data-panel--flush > div {
+  padding: 0;
+}
+
+.admin-data-panel-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.admin-data-panel-heading + div {
+  padding-top: 0;
+}
+
+.admin-data-panel-heading h2 {
+  color: #1f2422;
+  font-size: 1rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.admin-front-desk-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 1.2rem;
+  margin-bottom: 0.8rem;
+  color: #6a726b;
+  font-size: 0.74rem;
+}
+
+.admin-front-desk-summary span + span {
+  padding-left: 1.2rem;
+  border-left: 1px solid #dfe4de;
+}
+
+.admin-front-desk-summary strong {
+  margin-right: 0.25rem;
+  color: #1f2422;
+  font-size: 1rem;
+  font-weight: 700;
 }
 
 .admin-front-desk-toolbar {
@@ -3855,7 +3882,6 @@ em {
 
 .admin-guest-list {
   display: grid;
-  gap: 0.65rem;
 }
 
 .admin-guest-card {
@@ -3863,9 +3889,12 @@ em {
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
-  padding: 0.9rem;
-  border: 1px solid #e3e8e2;
-  background: #fbfcfa;
+  padding: 0.95rem 0;
+  border-bottom: 1px solid #edf0ec;
+}
+
+.admin-guest-card:last-child {
+  border-bottom: 0;
 }
 
 .admin-guest-card-main {
@@ -3944,62 +3973,6 @@ em {
   font-weight: 650;
 }
 
-.admin-front-desk-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.8rem;
-  margin-top: 0.8rem;
-}
-
-.admin-stay-list {
-  display: grid;
-  gap: 0.15rem;
-}
-
-.admin-stay-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.85rem 0;
-  border-bottom: 1px solid #edf0ec;
-}
-
-.admin-stay-row:last-child {
-  border-bottom: 0;
-}
-
-.admin-stay-row > div:first-child {
-  min-width: 0;
-}
-
-.admin-stay-row strong,
-.admin-stay-row small {
-  display: block;
-}
-
-.admin-stay-row strong {
-  overflow: hidden;
-  color: #1f2422;
-  font-size: 0.82rem;
-  font-weight: 650;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.admin-stay-row small {
-  margin-top: 0.2rem;
-  color: #7a847c;
-  font-size: 0.69rem;
-}
-
-.admin-stay-actions {
-  display: flex;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: 0.55rem;
-}
-
 .admin-front-desk-note {
   display: flex;
   gap: 0.7rem;
@@ -4059,8 +4032,6 @@ em {
 }
 
 @media (max-width: 900px) {
-  .admin-summary-grid--three,
-  .admin-front-desk-grid,
   .admin-front-desk-layout {
     grid-template-columns: 1fr;
   }
@@ -4097,13 +4068,4 @@ em {
     text-align: left;
   }
 
-  .admin-stay-row {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .admin-stay-actions {
-    width: 100%;
-    justify-content: space-between;
-  }
 }

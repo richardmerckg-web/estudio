@@ -34,20 +34,20 @@ const requestStatusOptions = ["request_all", "pending", "rejected", "cancelled",
 
 type AdminView = "overview" | "requests" | "front_desk" | "calendar" | "blocked";
 
-const adminNavItems: Array<{ id: AdminView; label: string; description: string; icon: LucideIcon }> = [
-  { id: "overview", label: "Overview", description: "At-a-glance status", icon: LayoutDashboard },
-  { id: "requests", label: "Requests", description: "Pending and history", icon: ClipboardList },
-  { id: "front_desk", label: "Front desk", description: "Arrivals and checkout", icon: BedDouble },
-  { id: "calendar", label: "Calendar", description: "Availability overview", icon: CalendarDays },
-  { id: "blocked", label: "Blocked dates", description: "Owner and maintenance holds", icon: SlidersHorizontal },
+const adminNavItems: Array<{ id: AdminView; label: string; icon: LucideIcon }> = [
+  { id: "overview", label: "Overview", icon: LayoutDashboard },
+  { id: "requests", label: "Requests", icon: ClipboardList },
+  { id: "front_desk", label: "Front desk", icon: BedDouble },
+  { id: "calendar", label: "Calendar", icon: CalendarDays },
+  { id: "blocked", label: "Blocked dates", icon: SlidersHorizontal },
 ];
 
 const adminViewMeta: Record<AdminView, { title: string; description: string }> = {
-  overview: { title: "Booking overview", description: "A quick view of current requests, stays, and availability." },
-  requests: { title: "Requests and history", description: "Review requests, update reservation details, and manage booking records." },
-  front_desk: { title: "Front desk", description: "Manage arrivals, in-house guests, and checkout without searching the full history." },
-  calendar: { title: "Availability calendar", description: "See which nights are available, booked, or blocked." },
-  blocked: { title: "Blocked dates", description: "Reserve dates for owner stays, maintenance, or other unavailable periods." },
+  overview: { title: "Booking overview", description: "Current requests, stays, and availability." },
+  requests: { title: "Requests", description: "Pending and closed request outcomes." },
+  front_desk: { title: "Front desk", description: "Check guests in and out." },
+  calendar: { title: "Calendar", description: "Review availability." },
+  blocked: { title: "Blocked dates", description: "Hold dates for owner or maintenance use." },
 };
 
 function money(value: number) {
@@ -321,7 +321,7 @@ export default function AdminDashboard() {
           </div>
           <nav className="admin-sidebar-nav">
             <span className="admin-sidebar-label">Workspace</span>
-            {adminNavItems.map(({ id, label, description, icon: Icon }) => (
+            {adminNavItems.map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
                 type="button"
@@ -330,7 +330,7 @@ export default function AdminDashboard() {
                 onClick={() => navigateTo(id)}
               >
                 <Icon size={18} strokeWidth={1.8} aria-hidden="true" />
-                <span><strong>{label}</strong><small>{description}</small></span>
+                <span><strong>{label}</strong></span>
               </button>
             ))}
           </nav>
@@ -403,23 +403,23 @@ export default function AdminDashboard() {
           {activeView === "requests" ? (
             <section className="admin-view-section" aria-labelledby="bookings-heading">
               <div className="admin-section-heading"><div><h2 id="bookings-heading">Booking requests</h2><p className="admin-muted">Review pending requests and closed request outcomes. Confirmed stays are managed at the front desk.</p></div><div className="admin-filters"><label>Check-in month<input type="month" value={month} onChange={(event) => setMonth(event.target.value)} /></label><label>Request status<select value={status} onChange={(event) => setStatus(event.target.value)}>{requestStatusOptions.map((option) => <option key={option} value={option}>{option === "request_all" ? "All request outcomes" : getBookingStatusLabel(option as BookingStatus)}</option>)}</select></label></div></div>
-              <Card className="admin-table-card admin-table-card--flush">
-                <CardContent>
+              <section className="admin-data-panel admin-data-panel--flush" aria-label="Booking request list">
+                <div>
                   {isLoading ? <p className="admin-loading">Loading bookings…</p> : null}
                   {!isLoading && requestBookings.length === 0 ? <p className="admin-empty">No booking requests match these filters.</p> : null}
                   {requestBookings.length ? <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Reference</th><th>Dates</th><th>Guest</th><th>Guests</th><th>Total</th><th>Status</th><th><span className="sr-only">Actions</span></th></tr></thead><tbody>{requestBookings.map((booking) => <tr key={booking.id}><td><button className="admin-reference" type="button" onClick={() => openBooking(booking)}>{booking.booking_reference}</button></td><td>{formatDateRange(booking.check_in, booking.check_out)}</td><td>{booking.guest_name}</td><td>{booking.guest_count}</td><td>{money(Number(booking.total_amount))}</td><td><Badge variant={booking.status}>{getBookingStatusLabel(booking.status)}</Badge></td><td><Button variant="ghost" onClick={() => openBooking(booking)}>View</Button></td></tr>)}</tbody></table></div> : null}
-                </CardContent>
-              </Card>
+                </div>
+              </section>
             </section>
           ) : null}
 
           {activeView === "front_desk" ? (
             <section className="admin-view-section" aria-labelledby="front-desk-heading">
               <h2 className="sr-only" id="front-desk-heading">Front desk operations</h2>
-              <div className="admin-summary-grid admin-summary-grid--three">
-                <Card><CardContent><span className="admin-stat-label">Arrivals</span><strong>{frontDeskArrivals.length}</strong><small>On {frontDeskDate}</small></CardContent></Card>
-                <Card><CardContent><span className="admin-stat-label">In-house</span><strong>{frontDeskInHouse.length}</strong><small>Staying on {frontDeskDate}</small></CardContent></Card>
-                <Card><CardContent><span className="admin-stat-label">Departures due</span><strong>{frontDeskDepartures.length}</strong><small>Due or overdue on {frontDeskDate}</small></CardContent></Card>
+              <div className="admin-front-desk-summary" aria-label="Front desk counts">
+                <span><strong>{frontDeskArrivals.length}</strong> arrivals</span>
+                <span><strong>{frontDeskInHouse.length}</strong> in-house</span>
+                <span><strong>{frontDeskDepartures.length}</strong> departures due</span>
               </div>
               <div className="admin-front-desk-toolbar">
                 <label className="admin-date-control">Operating date<input type="date" value={frontDeskDate} onChange={(event) => setFrontDeskDate(event.target.value)} /></label>
@@ -429,16 +429,16 @@ export default function AdminDashboard() {
                 </div>
               </div>
               <div className="admin-front-desk-layout">
-                <Card className="admin-front-desk-primary-card">
-                  <CardHeader><div className="admin-card-heading-row"><div><CardTitle>{frontDeskTab === "arrivals" ? "Arrivals" : "In-house guests"}</CardTitle><p className="admin-muted">{frontDeskTab === "arrivals" ? "Check in guests who are arriving on the operating date." : "Check out current guests and release unused nights when they leave early."}</p></div><Badge variant={frontDeskTab === "arrivals" ? "confirmed" : "checked_in"}>{frontDeskDate === today ? "Today" : frontDeskDate}</Badge></div></CardHeader>
-                  <CardContent>
+                <section className="admin-data-panel admin-front-desk-primary-card" aria-labelledby="front-desk-queue-heading">
+                  <div className="admin-data-panel-heading"><div><h2 id="front-desk-queue-heading">{frontDeskTab === "arrivals" ? "Arrivals" : "In-house guests"}</h2><p className="admin-muted">{frontDeskTab === "arrivals" ? "Check in guests arriving on the operating date." : "Check out current guests and release unused nights when they leave early."}</p></div><Badge variant={frontDeskTab === "arrivals" ? "confirmed" : "checked_in"}>{frontDeskDate === today ? "Today" : frontDeskDate}</Badge></div>
+                  <div>
                     {frontDeskList.length ? <div className="admin-guest-list">{frontDeskList.map((booking) => <article className="admin-guest-card" key={booking.id}><div className="admin-guest-card-main"><div className="admin-guest-card-heading"><strong>{booking.guest_name}</strong><Badge variant={booking.status}>{getBookingStatusLabel(booking.status)}</Badge></div><div className="admin-guest-card-meta"><span>{booking.booking_reference}</span><span>{formatDateRange(booking.check_in, booking.check_out)}</span><span>{booking.guest_count} guest{booking.guest_count === 1 ? "" : "s"}</span></div><div className="admin-guest-card-contact"><a href={`mailto:${booking.guest_email}`}>{booking.guest_email}</a><a href={`tel:${booking.contact_number}`}>{booking.contact_number}</a></div></div><div className="admin-guest-card-actions"><Button variant="ghost" onClick={() => openBooking(booking)}>View details</Button>{frontDeskTab === "arrivals" && canOperateFrontDesk ? <Button variant="secondary" onClick={() => void runAction({ action: "check_in", bookingId: booking.id })}>Check in</Button> : null}{frontDeskTab === "in_house" && canOperateFrontDesk ? <Button onClick={() => openCheckout(booking)}>Check out</Button> : null}{!canOperateFrontDesk ? <small>Actions available on today’s date</small> : null}</div></article>)}</div> : <p className="admin-empty">{frontDeskTab === "arrivals" ? `No confirmed arrivals on ${frontDeskDate}.` : `No checked-in guests staying on ${frontDeskDate}.`}</p>}
-                  </CardContent>
-                </Card>
-                <Card className="admin-front-desk-upcoming-card">
-                  <CardHeader><CardTitle>Upcoming arrivals</CardTitle><p className="admin-muted">Next confirmed reservations after the operating date.</p></CardHeader>
-                  <CardContent>{upcomingArrivals.length ? <div className="admin-upcoming-list admin-upcoming-list--compact">{upcomingArrivals.map((booking) => <button key={booking.id} type="button" onClick={() => openBooking(booking)}><span><strong>{booking.guest_name}</strong><small>{booking.check_in} · {booking.booking_reference}</small></span><span className="admin-upcoming-list-date">View details</span></button>)}</div> : <p className="admin-empty">No upcoming arrivals found.</p>}</CardContent>
-                </Card>
+                  </div>
+                </section>
+                <aside className="admin-data-panel admin-front-desk-upcoming-card" aria-labelledby="upcoming-arrivals-heading">
+                  <div className="admin-data-panel-heading"><div><h2 id="upcoming-arrivals-heading">Upcoming arrivals</h2><p className="admin-muted">After the operating date.</p></div></div>
+                  <div>{upcomingArrivals.length ? <div className="admin-upcoming-list admin-upcoming-list--compact">{upcomingArrivals.map((booking) => <button key={booking.id} type="button" onClick={() => openBooking(booking)}><span><strong>{booking.guest_name}</strong><small>{booking.check_in} · {booking.booking_reference}</small></span><span className="admin-upcoming-list-date">View details</span></button>)}</div> : <p className="admin-empty">No upcoming arrivals found.</p>}</div>
+                </aside>
               </div>
               <div className="admin-front-desk-note"><BedDouble size={18} aria-hidden="true" /><div><strong>Checkout rule</strong><p>Normal checkout keeps the original stay history. An earlier actual checkout date releases the unused nights and makes them available again.</p></div></div>
             </section>
@@ -446,16 +446,16 @@ export default function AdminDashboard() {
 
           {activeView === "calendar" ? (
             <section className="admin-view-section" aria-label="Availability calendar content">
-              <Card className="admin-calendar-card admin-calendar-card--full"><CardContent><BookingCalendar checkIn="" checkOut="" onRangeChange={() => undefined} readOnly refreshKey={calendarRefreshKey} /></CardContent></Card>
+              <div className="admin-calendar-section"><BookingCalendar checkIn="" checkOut="" onRangeChange={() => undefined} readOnly refreshKey={calendarRefreshKey} /></div>
             </section>
           ) : null}
 
           {activeView === "blocked" ? (
             <section className="admin-view-section admin-blocked-view" aria-labelledby="blocked-heading">
-              <Card className="admin-block-card">
-                <CardHeader><CardTitle id="blocked-heading">Block a date</CardTitle><p className="admin-muted">Use this for owner stays, maintenance, or other dates that should not be available to visitors.</p></CardHeader>
-                <CardContent><div className="admin-block-form"><label>Date<input type="date" value={blockedDate} min={todayDateString()} onChange={(event) => setBlockedDate(event.target.value)} /></label><label>Reason<input type="text" value={blockedReason} maxLength={240} onChange={(event) => setBlockedReason(event.target.value)} placeholder="Optional note" /></label>{blockError ? <p className="admin-error" role="alert">{blockError}</p> : null}<div className="admin-inline-actions"><Button onClick={() => void blockDate(true)}>Block date</Button><Button variant="secondary" onClick={() => void blockDate(false)}>Unblock</Button></div></div></CardContent>
-              </Card>
+              <section className="admin-data-panel admin-block-panel">
+                <div className="admin-data-panel-heading"><div><h2 id="blocked-heading">Block a date</h2><p className="admin-muted">Hold dates for owner stays, maintenance, or other unavailable periods.</p></div></div>
+                <div className="admin-block-form"><label>Date<input type="date" value={blockedDate} min={todayDateString()} onChange={(event) => setBlockedDate(event.target.value)} /></label><label>Reason<input type="text" value={blockedReason} maxLength={240} onChange={(event) => setBlockedReason(event.target.value)} placeholder="Optional note" /></label>{blockError ? <p className="admin-error" role="alert">{blockError}</p> : null}<div className="admin-inline-actions"><Button onClick={() => void blockDate(true)}>Block date</Button><Button variant="secondary" onClick={() => void blockDate(false)}>Unblock</Button></div></div>
+              </section>
               <div className="admin-info-panel"><CalendarDays size={18} aria-hidden="true" /><div><strong>How blocked dates work</strong><p>Blocked nights are unavailable to visitors and cannot be used by new manual bookings.</p></div></div>
             </section>
           ) : null}
