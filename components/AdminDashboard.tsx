@@ -30,7 +30,7 @@ import {
 } from "@/lib/booking-api";
 import { supabase } from "@/lib/supabase";
 
-const statusOptions = ["all", "pending", "confirmed", "checked_in", "checked_out", "rejected", "cancelled", "expired"];
+const requestStatusOptions = ["request_all", "pending", "rejected", "cancelled", "expired"];
 
 type AdminView = "overview" | "requests" | "front_desk" | "calendar" | "blocked";
 
@@ -63,6 +63,8 @@ export default function AdminDashboard() {
   const [activeView, setActiveView] = useState<AdminView>("overview");
   const [month, setMonth] = useState(monthKey(todayDateString()));
   const [status, setStatus] = useState("all");
+  const [frontDeskDate, setFrontDeskDate] = useState(todayDateString());
+  const [frontDeskTab, setFrontDeskTab] = useState<"arrivals" | "in_house">("arrivals");
   const [dashboard, setDashboard] = useState<AdminResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [dashboardError, setDashboardError] = useState("");
@@ -113,7 +115,8 @@ export default function AdminDashboard() {
     setIsLoading(true);
     setDashboardError("");
     try {
-      setDashboard(await fetchAdminData({ month: activeView === "front_desk" ? "" : month, status }));
+      const apiStatus = status === "request_all" ? "all" : status;
+      setDashboard(await fetchAdminData({ month: activeView === "front_desk" ? "" : month, status: apiStatus }));
     } catch (error) {
       setDashboardError(error instanceof Error ? error.message : "Could not load the dashboard.");
     } finally {
@@ -189,6 +192,10 @@ export default function AdminDashboard() {
   const navigateTo = (view: AdminView, nextStatus?: string) => {
     setActiveView(view);
     setStatus(nextStatus || (view === "requests" ? "pending" : "all"));
+    if (view === "front_desk") {
+      setFrontDeskTab("arrivals");
+      setFrontDeskDate(todayDateString());
+    }
   };
 
   const openBooking = (booking: AdminBooking) => {
@@ -280,15 +287,19 @@ export default function AdminDashboard() {
   const viewMeta = adminViewMeta[activeView];
   const today = todayDateString();
   const pendingBookings = dashboard?.bookings.filter((booking) => booking.status === "pending") || [];
+  const requestBookings = dashboard?.bookings.filter((booking) => ["pending", "rejected", "cancelled", "expired"].includes(booking.status)) || [];
   const upcomingBookings = dashboard?.bookings
     .filter((booking) => ["confirmed", "checked_in"].includes(booking.status))
     .slice(0, 5) || [];
   const frontDeskBookings = dashboard?.bookings
     .filter((booking) => ["confirmed", "checked_in"].includes(booking.status))
     .sort((first, second) => first.check_in.localeCompare(second.check_in)) || [];
-  const arrivals = frontDeskBookings.filter((booking) => booking.status === "confirmed");
-  const inHouse = frontDeskBookings.filter((booking) => booking.status === "checked_in");
-  const departingToday = inHouse.filter((booking) => booking.check_out === today);
+  const frontDeskArrivals = frontDeskBookings.filter((booking) => booking.status === "confirmed" && booking.check_in === frontDeskDate);
+  const frontDeskInHouse = frontDeskBookings.filter((booking) => booking.status === "checked_in" && booking.check_in <= frontDeskDate && frontDeskDate < booking.check_out);
+  const frontDeskDepartures = frontDeskInHouse.filter((booking) => booking.check_out === frontDeskDate);
+  const upcomingArrivals = frontDeskBookings.filter((booking) => booking.status === "confirmed" && booking.check_in > frontDeskDate).slice(0, 7);
+  const frontDeskList = frontDeskTab === "arrivals" ? frontDeskArrivals : frontDeskInHouse;
+  const canOperateFrontDesk = frontDeskDate === today;
 
   return (
     <main className="admin-page">
@@ -384,12 +395,12 @@ export default function AdminDashboard() {
 
           {activeView === "requests" ? (
             <section className="admin-view-section" aria-labelledby="bookings-heading">
-              <div className="admin-section-heading"><div><h2 id="bookings-heading">Requests and stays</h2><p className="admin-muted">Select a booking to review contact details or update its status.</p></div><div className="admin-filters"><label>Month<input type="month" value={month} onChange={(event) => setMonth(event.target.value)} /></label><label>Status<select value={status} onChange={(event) => setStatus(event.target.value)}>{statusOptions.map((option) => <option key={option} value={option}>{option === "all" ? "All statuses" : getBookingStatusLabel(option as BookingStatus)}</option>)}</select></label></div></div>
+              <div className="admin-section-heading"><div><h2 id="bookings-heading">Booking requests</h2><p className="admin-muted">Review pending requests and closed request outcomes. Confirmed stays are managed at the front desk.</p></div><div className="admin-filters"><label>Check-in month<input type="month" value={month} onChange={(event) => setMonth(event.target.value)} /></label><label>Request status<select value={status} onChange={(event) => setStatus(event.target.value)}>{requestStatusOptions.map((option) => <option key={option} value={option}>{option === "request_all" ? "All request outcomes" : getBookingStatusLabel(option as BookingStatus)}</option>)}</select></label></div></div>
               <Card className="admin-table-card admin-table-card--flush">
                 <CardContent>
                   {isLoading ? <p className="admin-loading">Loading bookings…</p> : null}
-                  {!isLoading && dashboard?.bookings.length === 0 ? <p className="admin-empty">No booking requests match these filters.</p> : null}
-                  {dashboard?.bookings.length ? <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Reference</th><th>Dates</th><th>Guest</th><th>Guests</th><th>Total</th><th>Status</th><th><span className="sr-only">Actions</span></th></tr></thead><tbody>{dashboard.bookings.map((booking) => <tr key={booking.id}><td><button className="admin-reference" type="button" onClick={() => openBooking(booking)}>{booking.booking_reference}</button></td><td>{formatDateRange(booking.check_in, booking.check_out)}</td><td>{booking.guest_name}</td><td>{booking.guest_count}</td><td>{money(Number(booking.total_amount))}</td><td><Badge variant={booking.status}>{getBookingStatusLabel(booking.status)}</Badge></td><td><Button variant="ghost" onClick={() => openBooking(booking)}>View</Button></td></tr>)}</tbody></table></div> : null}
+                  {!isLoading && requestBookings.length === 0 ? <p className="admin-empty">No booking requests match these filters.</p> : null}
+                  {requestBookings.length ? <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Reference</th><th>Dates</th><th>Guest</th><th>Guests</th><th>Total</th><th>Status</th><th><span className="sr-only">Actions</span></th></tr></thead><tbody>{requestBookings.map((booking) => <tr key={booking.id}><td><button className="admin-reference" type="button" onClick={() => openBooking(booking)}>{booking.booking_reference}</button></td><td>{formatDateRange(booking.check_in, booking.check_out)}</td><td>{booking.guest_name}</td><td>{booking.guest_count}</td><td>{money(Number(booking.total_amount))}</td><td><Badge variant={booking.status}>{getBookingStatusLabel(booking.status)}</Badge></td><td><Button variant="ghost" onClick={() => openBooking(booking)}>View</Button></td></tr>)}</tbody></table></div> : null}
                 </CardContent>
               </Card>
             </section>
@@ -399,22 +410,27 @@ export default function AdminDashboard() {
             <section className="admin-view-section" aria-labelledby="front-desk-heading">
               <h2 className="sr-only" id="front-desk-heading">Front desk operations</h2>
               <div className="admin-summary-grid admin-summary-grid--three">
-                <Card><CardContent><span className="admin-stat-label">Arrivals</span><strong>{arrivals.length}</strong><small>Confirmed reservations</small></CardContent></Card>
-                <Card><CardContent><span className="admin-stat-label">In-house</span><strong>{inHouse.length}</strong><small>Guests currently checked in</small></CardContent></Card>
-                <Card><CardContent><span className="admin-stat-label">Departures today</span><strong>{departingToday.length}</strong><small>Scheduled to check out today</small></CardContent></Card>
+                <Card><CardContent><span className="admin-stat-label">Arrivals</span><strong>{frontDeskArrivals.length}</strong><small>On {frontDeskDate}</small></CardContent></Card>
+                <Card><CardContent><span className="admin-stat-label">In-house</span><strong>{frontDeskInHouse.length}</strong><small>Staying on {frontDeskDate}</small></CardContent></Card>
+                <Card><CardContent><span className="admin-stat-label">Departures</span><strong>{frontDeskDepartures.length}</strong><small>Scheduled for {frontDeskDate}</small></CardContent></Card>
               </div>
-              <div className="admin-front-desk-grid">
-                <Card>
-                  <CardHeader><CardTitle>Arrivals and reservations</CardTitle><p className="admin-muted">Check guests in when they arrive.</p></CardHeader>
+              <div className="admin-front-desk-toolbar">
+                <label className="admin-date-control">Operating date<input type="date" value={frontDeskDate} onChange={(event) => setFrontDeskDate(event.target.value)} /></label>
+                <div className="admin-stay-tabs" role="tablist" aria-label="Front desk work queue">
+                  <button type="button" role="tab" aria-selected={frontDeskTab === "arrivals"} className={`admin-stay-tab ${frontDeskTab === "arrivals" ? "admin-stay-tab--active" : ""}`.trim()} onClick={() => setFrontDeskTab("arrivals")}>Arrivals <span>{frontDeskArrivals.length}</span></button>
+                  <button type="button" role="tab" aria-selected={frontDeskTab === "in_house"} className={`admin-stay-tab ${frontDeskTab === "in_house" ? "admin-stay-tab--active" : ""}`.trim()} onClick={() => setFrontDeskTab("in_house")}>In-house & departures <span>{frontDeskInHouse.length}</span></button>
+                </div>
+              </div>
+              <div className="admin-front-desk-layout">
+                <Card className="admin-front-desk-primary-card">
+                  <CardHeader><div className="admin-card-heading-row"><div><CardTitle>{frontDeskTab === "arrivals" ? "Arrivals" : "In-house guests"}</CardTitle><p className="admin-muted">{frontDeskTab === "arrivals" ? "Check in guests who are arriving on the operating date." : "Check out current guests and release unused nights when they leave early."}</p></div><Badge variant={frontDeskTab === "arrivals" ? "confirmed" : "checked_in"}>{frontDeskDate === today ? "Today" : frontDeskDate}</Badge></div></CardHeader>
                   <CardContent>
-                    {arrivals.length ? <div className="admin-stay-list">{arrivals.map((booking) => <div className="admin-stay-row" key={booking.id}><div><strong>{booking.guest_name}</strong><small>{formatDateRange(booking.check_in, booking.check_out)} · {booking.guest_count} guest{booking.guest_count === 1 ? "" : "s"}</small></div><div className="admin-stay-actions"><Badge variant="confirmed">Confirmed</Badge><Button variant="secondary" onClick={() => void runAction({ action: "check_in", bookingId: booking.id })}>Check in</Button></div></div>)}</div> : <p className="admin-empty">No confirmed arrivals in the selected month.</p>}
+                    {frontDeskList.length ? <div className="admin-guest-list">{frontDeskList.map((booking) => <article className="admin-guest-card" key={booking.id}><div className="admin-guest-card-main"><div className="admin-guest-card-heading"><strong>{booking.guest_name}</strong><Badge variant={booking.status}>{getBookingStatusLabel(booking.status)}</Badge></div><div className="admin-guest-card-meta"><span>{booking.booking_reference}</span><span>{formatDateRange(booking.check_in, booking.check_out)}</span><span>{booking.guest_count} guest{booking.guest_count === 1 ? "" : "s"}</span></div><div className="admin-guest-card-contact"><a href={`mailto:${booking.guest_email}`}>{booking.guest_email}</a><a href={`tel:${booking.contact_number}`}>{booking.contact_number}</a></div></div><div className="admin-guest-card-actions"><Button variant="ghost" onClick={() => openBooking(booking)}>View details</Button>{frontDeskTab === "arrivals" && canOperateFrontDesk ? <Button variant="secondary" onClick={() => void runAction({ action: "check_in", bookingId: booking.id })}>Check in</Button> : null}{frontDeskTab === "in_house" && canOperateFrontDesk ? <Button onClick={() => openCheckout(booking)}>Check out</Button> : null}{!canOperateFrontDesk ? <small>Actions available on today’s date</small> : null}</div></article>)}</div> : <p className="admin-empty">{frontDeskTab === "arrivals" ? `No confirmed arrivals on ${frontDeskDate}.` : `No checked-in guests staying on ${frontDeskDate}.`}</p>}
                   </CardContent>
                 </Card>
-                <Card>
-                  <CardHeader><CardTitle>In-house guests</CardTitle><p className="admin-muted">Record checkout and release unused nights for early departures.</p></CardHeader>
-                  <CardContent>
-                    {inHouse.length ? <div className="admin-stay-list">{inHouse.map((booking) => <div className="admin-stay-row" key={booking.id}><div><strong>{booking.guest_name}</strong><small>Scheduled checkout {booking.check_out} · {booking.booking_reference}</small></div><div className="admin-stay-actions"><Badge variant="checked_in">Checked in</Badge><Button onClick={() => openCheckout(booking)}>Check out</Button></div></div>)}</div> : <p className="admin-empty">No guests are currently checked in.</p>}
-                  </CardContent>
+                <Card className="admin-front-desk-upcoming-card">
+                  <CardHeader><CardTitle>Upcoming arrivals</CardTitle><p className="admin-muted">Next confirmed reservations after the operating date.</p></CardHeader>
+                  <CardContent>{upcomingArrivals.length ? <div className="admin-upcoming-list admin-upcoming-list--compact">{upcomingArrivals.map((booking) => <button key={booking.id} type="button" onClick={() => openBooking(booking)}><span><strong>{booking.guest_name}</strong><small>{booking.check_in} · {booking.booking_reference}</small></span><span className="admin-upcoming-list-date">View details</span></button>)}</div> : <p className="admin-empty">No upcoming arrivals found.</p>}</CardContent>
                 </Card>
               </div>
               <div className="admin-front-desk-note"><BedDouble size={18} aria-hidden="true" /><div><strong>Checkout rule</strong><p>Normal checkout keeps the original stay history. An earlier actual checkout date releases the unused nights and makes them available again.</p></div></div>

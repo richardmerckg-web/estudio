@@ -3682,6 +3682,179 @@ em {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.admin-front-desk-toolbar {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 0.8rem;
+  padding: 0.8rem;
+  border: 1px solid #dfe4de;
+  background: #f7f8f6;
+}
+
+.admin-date-control {
+  display: grid;
+  gap: 0.35rem;
+  color: #59635b;
+  font-size: 0.72rem;
+  font-weight: 650;
+}
+
+.admin-date-control input {
+  min-height: 2.45rem;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid #d6dcd5;
+  border-radius: 5px;
+  background: #fff;
+  color: #1f2422;
+  font: inherit;
+  font-size: 0.8rem;
+}
+
+.admin-stay-tabs {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.2rem;
+  border: 1px solid #dfe4de;
+  background: #fff;
+}
+
+.admin-stay-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2.1rem;
+  padding: 0.35rem 0.7rem;
+  border: 0;
+  background: transparent;
+  color: #59635b;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 650;
+}
+
+.admin-stay-tab span {
+  display: inline-grid;
+  min-width: 1.35rem;
+  min-height: 1.25rem;
+  place-items: center;
+  border-radius: 999px;
+  background: #eef1ed;
+  color: #59635b;
+  font-size: 0.67rem;
+}
+
+.admin-stay-tab--active {
+  background: #1f2422;
+  color: #fff;
+}
+
+.admin-stay-tab--active span {
+  background: #fff;
+  color: #1f2422;
+}
+
+.admin-front-desk-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(260px, 0.55fr);
+  align-items: start;
+  gap: 0.8rem;
+  margin-top: 0.8rem;
+}
+
+.admin-guest-list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.admin-guest-card {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem;
+  border: 1px solid #e3e8e2;
+  background: #fbfcfa;
+}
+
+.admin-guest-card-main {
+  min-width: 0;
+}
+
+.admin-guest-card-heading,
+.admin-guest-card-meta,
+.admin-guest-card-contact,
+.admin-guest-card-actions {
+  display: flex;
+  align-items: center;
+}
+
+.admin-guest-card-heading {
+  gap: 0.55rem;
+}
+
+.admin-guest-card-heading strong {
+  overflow: hidden;
+  color: #1f2422;
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-guest-card-meta,
+.admin-guest-card-contact {
+  flex-wrap: wrap;
+  gap: 0.35rem 0.75rem;
+  margin-top: 0.45rem;
+  color: #7a847c;
+  font-size: 0.69rem;
+}
+
+.admin-guest-card-meta span + span {
+  padding-left: 0.75rem;
+  border-left: 1px solid #dfe4de;
+}
+
+.admin-guest-card-contact a {
+  overflow: hidden;
+  color: #59635b;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-guest-card-contact a:hover {
+  color: #925d54;
+}
+
+.admin-guest-card-actions {
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.35rem;
+}
+
+.admin-guest-card-actions small {
+  max-width: 145px;
+  color: #7a847c;
+  font-size: 0.67rem;
+  line-height: 1.35;
+  text-align: right;
+}
+
+.admin-upcoming-list--compact button {
+  padding: 0.72rem 0;
+}
+
+.admin-upcoming-list-date {
+  flex: 0 0 auto;
+  color: #925d54;
+  font-size: 0.68rem;
+  font-weight: 650;
+}
+
 .admin-front-desk-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -3798,12 +3971,43 @@ em {
 
 @media (max-width: 900px) {
   .admin-summary-grid--three,
-  .admin-front-desk-grid {
+  .admin-front-desk-grid,
+  .admin-front-desk-layout {
     grid-template-columns: 1fr;
+  }
+
+  .admin-front-desk-toolbar {
+    align-items: stretch;
+    flex-direction: column;
   }
 }
 
 @media (max-width: 600px) {
+  .admin-stay-tabs {
+    width: 100%;
+  }
+
+  .admin-stay-tab {
+    flex: 1;
+    justify-content: center;
+    padding-right: 0.45rem;
+    padding-left: 0.45rem;
+  }
+
+  .admin-guest-card {
+    flex-direction: column;
+  }
+
+  .admin-guest-card-actions {
+    justify-content: flex-start;
+    width: 100%;
+  }
+
+  .admin-guest-card-actions small {
+    max-width: none;
+    text-align: left;
+  }
+
   .admin-stay-row {
     align-items: flex-start;
     flex-direction: column;
