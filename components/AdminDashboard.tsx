@@ -83,6 +83,7 @@ export default function AdminDashboard() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState(supabase ? "" : "Supabase is not configured for this build.");
+  const [currentMonth, setCurrentMonth] = useState(() => monthKey(todayDateString()));
   const [activeView, setActiveView] = useState<AdminView>("overview");
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [month, setMonth] = useState(monthKey(todayDateString()));
@@ -136,6 +137,12 @@ export default function AdminDashboard() {
   }, []);
 
   useEffect(() => {
+    const refreshCurrentMonth = () => setCurrentMonth(monthKey(todayDateString()));
+    const timer = window.setInterval(refreshCurrentMonth, 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
     if (!mobileSidebarOpen) return;
 
     const previousOverflow = document.body.style.overflow;
@@ -163,14 +170,14 @@ export default function AdminDashboard() {
     setDashboardError("");
     try {
       const apiStatus = activeView === "requests" ? "pending" : status;
-      const filterMonth = activeView === "front_desk" ? "" : activeView === "history" ? recordsMonth : month;
+      const filterMonth = activeView === "overview" ? currentMonth : activeView === "front_desk" ? "" : activeView === "history" ? recordsMonth : month;
       setDashboard(await fetchAdminData({ month: filterMonth, status: apiStatus }));
     } catch (error) {
       setDashboardError(error instanceof Error ? error.message : "Could not load the dashboard.");
     } finally {
       setIsLoading(false);
     }
-  }, [activeView, month, recordsMonth, sessionEmail, status]);
+  }, [activeView, currentMonth, month, recordsMonth, sessionEmail, status]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => void loadDashboard(), 0);
@@ -466,8 +473,8 @@ export default function AdminDashboard() {
             <section className="admin-view-section" aria-labelledby="overview-heading">
               <h2 className="sr-only" id="overview-heading">Booking overview summary</h2>
               <div className="admin-summary-grid">
-                <Card><CardContent><span className="admin-stat-label">Bookings this month</span><strong>{dashboard?.bookings.length ?? 0}</strong><small>All statuses by check-in month</small></CardContent></Card>
-                <Card><CardContent><span className="admin-stat-label">Confirmed revenue</span><strong>{money(filteredConfirmedRevenue)}</strong><small>Selected month</small></CardContent></Card>
+                <Card><CardContent><span className="admin-stat-label">Bookings this month</span><strong>{dashboard?.bookings.length ?? 0}</strong><small>All statuses by current check-in month</small></CardContent></Card>
+                <Card><CardContent><span className="admin-stat-label">Confirmed revenue</span><strong>{money(filteredConfirmedRevenue)}</strong><small>Current check-in month</small></CardContent></Card>
                 <Card><CardContent><span className="admin-stat-label">Confirmed nights</span><strong>{summary?.confirmedNights ?? 0}</strong><small>Active and completed stays</small></CardContent></Card>
                 <Card><CardContent><span className="admin-stat-label">Pending</span><strong>{summary?.totals.pending ?? 0}</strong><small>Requests awaiting decision</small></CardContent></Card>
               </div>
