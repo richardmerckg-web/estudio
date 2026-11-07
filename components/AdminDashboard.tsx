@@ -184,6 +184,37 @@ export default function AdminDashboard() {
     return () => window.clearTimeout(timer);
   }, [loadDashboard]);
 
+  useEffect(() => {
+    const client = supabase;
+    if (!client || !sessionEmail) return;
+
+    const channel = client
+      .channel("admin-booking-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "bookings" },
+        () => void loadDashboard(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "booking_nights" },
+        () => {
+          setCalendarRefreshKey((value) => value + 1);
+          void loadDashboard();
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "blocked_dates" },
+        () => setCalendarRefreshKey((value) => value + 1),
+      )
+      .subscribe();
+
+    return () => {
+      void client.removeChannel(channel);
+    };
+  }, [loadDashboard, sessionEmail]);
+
   const filteredConfirmedRevenue = useMemo(
     () =>
       dashboard?.bookings
