@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { BedDouble, CalendarDays, ClipboardList, Eye, EyeOff, History, LayoutDashboard, LoaderCircle, LogOut, Plus, X } from "lucide-react";
+import { BedDouble, CalendarDays, ClipboardList, Eye, EyeOff, History, LayoutDashboard, LoaderCircle, LogOut, Menu, Plus, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import BookingCalendar from "@/components/BookingCalendar";
 import { Badge } from "@/components/ui/badge";
@@ -84,6 +84,7 @@ export default function AdminDashboard() {
   const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState(supabase ? "" : "Supabase is not configured for this build.");
   const [activeView, setActiveView] = useState<AdminView>("overview");
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [month, setMonth] = useState(monthKey(todayDateString()));
   const [recordsMonth, setRecordsMonth] = useState(monthKey(todayDateString()));
   const [status, setStatus] = useState("all");
@@ -98,7 +99,6 @@ export default function AdminDashboard() {
   const [calendarRefreshKey, setCalendarRefreshKey] = useState(0);
   const [blockedDate, setBlockedDate] = useState("");
   const [blockedDateStatus, setBlockedDateStatus] = useState<AvailabilityStatus | "">("");
-  const [blockedReason, setBlockedReason] = useState("");
   const [blockError, setBlockError] = useState("");
   const [editDates, setEditDates] = useState({ checkIn: "", checkOut: "", guestCount: 1 });
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -134,6 +134,28 @@ export default function AdminDashboard() {
 
     return () => listener.subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (!mobileSidebarOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMobileSidebarOpen(false);
+    };
+    const handleResize = () => {
+      if (!window.matchMedia("(max-width: 900px)").matches) setMobileSidebarOpen(false);
+    };
+
+    if (window.matchMedia("(max-width: 900px)").matches) document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("resize", handleResize);
+    };
+  }, [mobileSidebarOpen]);
 
   const loadDashboard = useCallback(async () => {
     if (!sessionEmail) return;
@@ -212,6 +234,7 @@ export default function AdminDashboard() {
 
   const navigateTo = (view: AdminView, nextStatus?: string) => {
     setActiveView(view);
+    setMobileSidebarOpen(false);
     setStatus(nextStatus || (view === "requests" ? "pending" : "all"));
     if (view === "front_desk") {
       setFrontDeskTab("check_in");
@@ -237,7 +260,6 @@ export default function AdminDashboard() {
   const selectBlockedDate = (date: string, status: AvailabilityStatus) => {
     setBlockedDate(date);
     setBlockedDateStatus(status);
-    setBlockedReason("");
     setBlockError("");
   };
 
@@ -272,12 +294,11 @@ export default function AdminDashboard() {
     setBlockError("");
     const succeeded = await runAction(
       shouldBlock
-        ? { action: "block", date: blockedDate, reason: blockedReason }
+        ? { action: "block", date: blockedDate }
         : { action: "unblock", date: blockedDate },
     );
     if (succeeded) {
       setBlockedDateStatus(shouldBlock ? "blocked" : "available");
-      setBlockedReason("");
       setBlockError("");
     } else {
       setBlockError("Date action failed.");
@@ -368,12 +389,15 @@ export default function AdminDashboard() {
   return (
     <main className="admin-page">
       <div className="admin-workspace">
-        <aside className="admin-sidebar" aria-label="Admin navigation">
+        <aside id="admin-navigation" className={`admin-sidebar${mobileSidebarOpen ? " admin-sidebar--open" : ""}`} aria-label="Admin navigation">
           <div className="admin-sidebar-brand">
             <div>
               <strong>Estudio Fresco</strong>
               <span>Booking admin</span>
             </div>
+            <button type="button" className="admin-sidebar-close" aria-label="Close admin navigation" onClick={() => setMobileSidebarOpen(false)}>
+              <X size={18} aria-hidden="true" />
+            </button>
           </div>
           <nav className="admin-sidebar-nav">
             {adminNavItems.map(({ id, label, icon: Icon }) => (
@@ -399,8 +423,18 @@ export default function AdminDashboard() {
             </Button>
           </div>
         </aside>
+        {mobileSidebarOpen ? <button type="button" className="admin-sidebar-backdrop" aria-label="Close admin navigation" onClick={() => setMobileSidebarOpen(false)} /> : null}
 
         <div className="admin-main">
+          <div className="admin-mobile-toolbar">
+            <div>
+              <strong>Estudio Fresco</strong>
+              <span>Booking admin</span>
+            </div>
+            <button type="button" className="admin-mobile-menu" aria-label="Open admin navigation" aria-expanded={mobileSidebarOpen} aria-controls="admin-navigation" onClick={() => setMobileSidebarOpen(true)}>
+              <Menu size={19} strokeWidth={1.8} aria-hidden="true" />
+            </button>
+          </div>
           <header className="admin-header">
             <div>
               <h1>{viewMeta.title}</h1>
@@ -474,8 +508,8 @@ export default function AdminDashboard() {
             <section className="admin-view-section" aria-labelledby="front-desk-heading">
               <h2 className="sr-only" id="front-desk-heading">Check-in and checkout operations</h2>
               <div className="admin-stay-tabs admin-front-desk-tabs" role="tablist" aria-label="Check-in and checkout work queue">
-                <button type="button" role="tab" aria-selected={frontDeskTab === "check_in"} className={`admin-stay-tab ${frontDeskTab === "check_in" ? "admin-stay-tab--active" : ""}`.trim()} onClick={() => setFrontDeskTab("check_in")}>Check in <span>{checkInBookings.length}</span></button>
-                <button type="button" role="tab" aria-selected={frontDeskTab === "check_out"} className={`admin-stay-tab ${frontDeskTab === "check_out" ? "admin-stay-tab--active" : ""}`.trim()} onClick={() => setFrontDeskTab("check_out")}>Check out <span>{checkOutBookings.length}</span></button>
+                <button type="button" role="tab" aria-selected={frontDeskTab === "check_in"} className={`admin-stay-tab ${frontDeskTab === "check_in" ? "admin-stay-tab--active" : ""}`.trim()} onClick={() => setFrontDeskTab("check_in")}>Check{"\u00a0"}in <span>{checkInBookings.length}</span></button>
+                <button type="button" role="tab" aria-selected={frontDeskTab === "check_out"} className={`admin-stay-tab ${frontDeskTab === "check_out" ? "admin-stay-tab--active" : ""}`.trim()} onClick={() => setFrontDeskTab("check_out")}>Check{"\u00a0"}out <span>{checkOutBookings.length}</span></button>
               </div>
               <div className="admin-front-desk-layout">
                 <section className="admin-data-panel admin-front-desk-primary-card" aria-labelledby="front-desk-queue-heading">
@@ -515,8 +549,7 @@ export default function AdminDashboard() {
                         <div><span>Selected date</span><strong>{blockedDate ? formatDate(blockedDate, { month: "long", day: "numeric", year: "numeric" }) : "None"}</strong></div>
                         <div><span>Status</span><strong>{blockedDateStatus ? getStatusLabel(blockedDateStatus) : blockedDate ? "Select it on the calendar to verify" : "Not selected"}</strong></div>
                       </div>
-                      <label>Date<input type="date" value={blockedDate} min={todayDateString()} onChange={(event) => { setBlockedDate(event.target.value); setBlockedDateStatus(""); setBlockError(""); }} /></label>
-                      {blockedDateStatus !== "blocked" ? <label>Reason<input type="text" value={blockedReason} maxLength={240} onChange={(event) => setBlockedReason(event.target.value)} placeholder="Optional note" /></label> : null}
+                      <label>Date<input type="date" value={blockedDate} min={todayDateString()} onClick={(event) => { event.currentTarget.showPicker?.(); }} onChange={(event) => { setBlockedDate(event.target.value); setBlockedDateStatus(""); setBlockError(""); }} /></label>
                       {blockError ? <p className="admin-error" role="alert">{blockError}</p> : null}
                       <div className="admin-inline-actions"><Button disabled={!blockedDate || blockedDateStatus === "booked"} onClick={() => void blockDate(true)}>Block selected date</Button>{blockedDateStatus === "blocked" ? <Button variant="secondary" onClick={() => void blockDate(false)}>Unblock selected date</Button> : null}</div>
                     </div>
